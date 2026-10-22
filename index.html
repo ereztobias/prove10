@@ -50,7 +50,6 @@
 
     var form = document.getElementById('capture');
     var note = document.getElementById('note');
-    var ADDRESS = 'hello@prove10.com';
     // Separate origin on purpose: the apex stays DNS-only for GitHub Pages.
     var ENDPOINT = 'https://api.prove10.com/subscribe';
 
@@ -82,14 +81,9 @@
         form.innerHTML = '<p class="done">You are on the list. Nothing else to do.</p>';
         say('');
       }).catch(function () {
-        // Until the endpoint answers, hand the address over rather than
-        // swallow the signal. No internals, no apology.
-        var link = 'mailto:' + ADDRESS +
-          '?subject=' + encodeURIComponent('Keep me posted') +
-          '&body=' + encodeURIComponent(value);
-        form.innerHTML = '<p class="done">One step: email ' +
-          '<a href="' + link + '">' + ADDRESS + '</a> and you are on the list.</p>';
-        say('');
+        // The endpoint is real now, so a failure is a failure: leave the
+        // form standing so they can simply try again.
+        say('That did not go through. Try again.', 'warn');
       }).then(function () {
         form.removeAttribute('aria-busy');
       });
