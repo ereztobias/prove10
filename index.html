@@ -82,10 +82,14 @@
         form.innerHTML = '<p class="done">You are on the list. Nothing else to do.</p>';
         say('');
       }).catch(function () {
-        // No endpoint yet: hand over the address rather than swallow the signal.
-        form.innerHTML = '<p class="done">Not wired up yet. Write to ' +
-          '<a href="mailto:' + ADDRESS + '">' + ADDRESS + '</a> and you are on the list.</p>';
-        say('Sorry about the detour. The address above reaches us directly.', 'warn');
+        // Until the endpoint answers, hand the address over rather than
+        // swallow the signal. No internals, no apology.
+        var link = 'mailto:' + ADDRESS +
+          '?subject=' + encodeURIComponent('Keep me posted') +
+          '&body=' + encodeURIComponent(value);
+        form.innerHTML = '<p class="done">One step: email ' +
+          '<a href="' + link + '">' + ADDRESS + '</a> and you are on the list.</p>';
+        say('');
       }).then(function () {
         form.removeAttribute('aria-busy');
       });
