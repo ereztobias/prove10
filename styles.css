@@ -131,13 +131,6 @@ h1 em {
   color: var(--muted);
 }
 
-.sub {
-  margin: 0;
-  max-width: 44ch;
-  color: var(--muted);
-  line-height: 1.55;
-}
-
 /* ---------- capture ---------- */
 
 .capture {
@@ -193,6 +186,8 @@ h1 em {
   max-width: 42ch;
 }
 .note.warn { color: var(--accent); }
+/* silent until the script has something to report */
+.note:empty { display: none; }
 
 .sr {
   position: absolute;

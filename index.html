@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>prove10</title>
-<meta name="description" content="prove10 ships AI products at an unreasonable pace. Small products, finished and live, built in weeks rather than quarters.">
+<meta name="description" content="prove10 is building something new. Coming soon.">
 <meta name="color-scheme" content="dark">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23070910'/><text y='23' x='4' font-size='18' font-family='system-ui' font-weight='600' fill='%238fa6ff'>10</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,31 +19,23 @@
 
     <header class="top">
       <span class="wordmark">prove<b>10</b></span>
-      <span class="chip"><i></i>building in private</span>
+      <span class="chip"><i></i>coming soon</span>
     </header>
 
     <main class="stage reveal">
       <h1 style="--d:0ms">
-        We ship AI products at an unreasonable pace.
-        <em>On purpose.</em>
+        We are building something new.
+        <em>Stay tuned.</em>
       </h1>
-
-      <p class="sub" style="--d:90ms">
-        Small products, finished and live, built in weeks rather than
-        quarters. Nothing here is a demo.
-      </p>
 
       <form class="capture" id="capture" novalidate style="--d:180ms">
         <label class="sr" for="email">Email address</label>
         <input id="email" name="email" type="email" inputmode="email"
                autocomplete="email" placeholder="you@company.com" required>
-        <button type="submit">Request access</button>
+        <button type="submit">Keep me posted</button>
       </form>
 
-      <p class="note" id="note" style="--d:240ms">
-        One email when there is something to use. Nothing else, and one
-        click to stop.
-      </p>
+      <p class="note" id="note" style="--d:240ms"></p>
     </main>
 
     <footer class="bottom reveal">
@@ -88,7 +80,7 @@
       }).then(function (r) {
         if (!r.ok) throw new Error(r.status);
         form.innerHTML = '<p class="done">You are on the list. Nothing else to do.</p>';
-        say('One email when there is something to use. Nothing else.');
+        say('');
       }).catch(function () {
         // No endpoint yet: hand over the address rather than swallow the signal.
         form.innerHTML = '<p class="done">Not wired up yet. Write to ' +
