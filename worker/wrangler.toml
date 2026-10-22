@@ -1,0 +1,14 @@
+name = "prove10-subscribe"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+# A custom domain, not a route on the apex: prove10.com must stay
+# DNS-only so GitHub Pages can keep renewing its certificate.
+[[routes]]
+pattern = "api.prove10.com"
+custom_domain = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "prove10-signups"
+database_id = "PASTE_AFTER_d1_create"
