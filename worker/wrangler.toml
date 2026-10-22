@@ -11,4 +11,4 @@ custom_domain = true
 [[d1_databases]]
 binding = "DB"
 database_name = "prove10-signups"
-database_id = "PASTE_AFTER_d1_create"
+database_id = "c3ddbd73-6496-4751-8084-6c78d9acd36e"
