@@ -226,21 +226,11 @@ figcaption {
   letter-spacing: -0.02em;
 }
 
-.track {
-  height: 6px;
+.began {
+  font-family: var(--mono);
+  font-size: var(--step--1);
+  color: var(--muted);
   min-width: 0;
-  background-image: repeating-linear-gradient(
-    to right,
-    var(--rule) 0 1px,
-    transparent 1px 7px
-  );
-}
-
-.fill {
-  display: block;
-  height: 6px;
-  width: var(--p, 0%);
-  background: var(--proof);
 }
 
 .status {
@@ -286,4 +276,12 @@ figcaption {
   border-top: 1px solid var(--rule);
   font-size: var(--step--1);
   color: var(--muted);
+}
+
+@media (max-width: 34rem) {
+  .bench > li {
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+    gap: 0.15rem 1rem;
+  }
+  .slot { grid-row: 1 / span 2; }
 }
