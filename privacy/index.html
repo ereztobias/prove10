@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>prove10 — what we store</title>
+<meta name="description" content="What prove10 stores when you give it your email address, and how to get it back.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#06080e">
+<link rel="canonical" href="https://prove10.com/privacy/">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23070910'/><text y='23' x='4' font-size='18' font-family='system-ui' font-weight='600' fill='%238fa6ff'>10</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  /* One column of prose, narrow enough to read, in the same materials
+     as the page it belongs to. */
+  .prose { max-width: 64ch; display: grid; gap: 1.75rem; align-self: start; }
+  .prose h1 { font-size: clamp(1.75rem, 1rem + 3vw, 2.5rem); }
+  .prose h2 {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: var(--mono);
+    color: var(--accent);
+  }
+  .prose section { display: grid; gap: 0.6rem; }
+  .prose p, .prose li { margin: 0; color: #b6bfd1; }
+  .prose ul { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.5rem; }
+  .prose strong { color: var(--ink); font-weight: 400; }
+  .prose a { color: var(--accent); text-underline-offset: 3px; }
+  .lede { color: var(--ink) !important; font-size: 1.0625rem; }
+  .stamp { font-family: var(--mono); font-size: 0.75rem; color: var(--faint); }
+</style>
+</head>
+<body>
+  <div class="field" aria-hidden="true"></div>
+
+  <div class="page">
+
+    <header class="top">
+      <a class="wordmark" href="/" style="color:inherit;text-decoration:none">prove<b>10</b></a>
+      <span class="chip"><i></i>what we store</span>
+    </header>
+
+    <main class="stage prose">
+      <h1>What we store</h1>
+
+      <p class="lede">One email address, so we can send you <strong>one email</strong>
+        when there is something to use. That is the entire purpose. There is no
+        newsletter, no second list, and nothing is shared with anyone.</p>
+
+      <section>
+        <h2>Who is asking</h2>
+        <p>prove10, a business operated from Israel that is <strong>not yet
+          registered as a company</strong>. When it is, this page will name the
+          entity and its address. Until then the person behind it answers at
+          <strong>hello@prove10.com</strong>, and that is the address to use for
+          anything on this page.</p>
+      </section>
+
+      <section>
+        <h2>What is kept</h2>
+        <ul>
+          <li>Your <strong>email address</strong>.</li>
+          <li>The <strong>time you submitted it</strong> and the time you
+            confirmed it.</li>
+          <li>The <strong>two-letter country</strong> the request came from, as
+            reported by our network provider. Not a city, not a location.</li>
+          <li>A <strong>salted SHA-256 hash of your IP address</strong> — never
+            the address itself. It exists only to stop one machine submitting
+            hundreds of times, and cannot be turned back into an IP.</li>
+          <li>The <strong>exact sentence you agreed to</strong>, so that what you
+            consented to is a matter of record rather than of memory.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>What is not kept</h2>
+        <p>No name, no company, no job title. <strong>No cookies</strong> — this
+          site sets none at all. No analytics, no advertising pixels, no
+          tracking of any kind, and no profile built about you. Typefaces come
+          from Google Fonts, which sees your IP address as a consequence of
+          serving them; nothing else on these pages contacts a third party.</p>
+      </section>
+
+      <section>
+        <h2>Why it is lawful</h2>
+        <p>Consent, under Article 6(1)(a) of the GDPR, given <strong>twice</strong>:
+          once when you submit the form, once when you click the link in the
+          email we send you. An address that has not been confirmed is never
+          sent anything. Consent is the only basis used, and it is specific to
+          the single email described above.</p>
+      </section>
+
+      <section>
+        <h2>How long</h2>
+        <p>Until you unsubscribe, or until that one email has gone out and
+          <strong>twelve months</strong> have passed — whichever comes first.
+          Then the row is deleted. If you unsubscribe, the row is kept marked
+          as unsubscribed instead of erased, so that a later import cannot
+          quietly put you back. Ask for erasure and it goes entirely.</p>
+      </section>
+
+      <section>
+        <h2>Who else touches it</h2>
+        <ul>
+          <li><strong>Cloudflare</strong> — stores the list and runs the code
+            that receives it.</li>
+          <li><strong>Resend</strong> — sends the mail, and therefore sees your
+            address.</li>
+        </ul>
+        <p>Nobody else. The list is not sold, rented, shared or used to find
+          you anywhere else.</p>
+      </section>
+
+      <section>
+        <h2>Getting out, or getting it back</h2>
+        <p>Every email carries a one-click unsubscribe link, and it works
+          immediately. You can also ask us to show you what we hold, correct
+          it, delete it, or hand it over in a portable form, and withdraw your
+          consent at any time for any reason. One line to
+          <strong>hello@prove10.com</strong> is enough — no form, no account,
+          no explanation needed.</p>
+        <p>If you are in the EU or the UK and think this has been handled
+          badly, you may complain to your national data protection authority.</p>
+      </section>
+
+      <p class="stamp">Last changed 23 October 2026</p>
+    </main>
+
+    <footer class="bottom">
+      <a class="contact" href="mailto:hello@prove10.com">hello@prove10.com</a>
+      <span class="rights">&copy; <span id="year">2026</span> prove10</span>
+    </footer>
+
+  </div>
+
+  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+</body>
+</html>

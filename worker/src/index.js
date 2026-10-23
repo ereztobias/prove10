@@ -36,6 +36,18 @@ const EMAIL = /^[^@\s]+@[^@\s.]+\.[^@\s]{2,}$/;
 const MAX_PER_IP_PER_HOUR = 10;
 const SITE = 'https://prove10.com';
 
+/**
+ * The sentence printed beside the form, stored verbatim with every new
+ * row. Article 7(1) of the GDPR puts the burden of showing consent on
+ * us, and a timestamp does not show what was agreed to. Change the
+ * wording on the page and change it here in the same commit; older rows
+ * keep the wording that was actually on screen for them.
+ *
+ * Consent is deliberately narrow. Sending anything beyond the one email
+ * named here would go past what these people agreed to.
+ */
+const CONSENT = 'One email when there is something to use. Nothing else, ever.';
+
 // The list is small for a long time yet, and a cap keeps one bad query
 // from pulling the whole table into a phone browser.
 const ADMIN_PAGE_ROWS = 500;
@@ -199,10 +211,19 @@ function confirmationHtml(link) {
     '<a href="' + href + '" style="color:#8fa6ff;word-break:break-all;">' +
     href + '</a></p>' +
 
+    // Identity and the way out, in the mail itself. Israeli law wants
+    // the sender named with contact details; GDPR wants withdrawal to
+    // be as easy as consent was.
     '<p style="margin:34px 0 0;padding-top:22px;border-top:1px solid #1d2435;' +
     'font-family:' + MAIL_FONT + ';font-size:13px;line-height:1.6;color:#5b6479;">' +
     'If you did not ask for this, ignore it and nothing happens. ' +
-    'We will not write again unless you confirm.</p>' +
+    'We will not write again unless you confirm.<br><br>' +
+    'Sent by prove10 &middot; ' +
+    '<a href="mailto:hello@prove10.com" style="color:#7c879c;">hello@prove10.com</a><br>' +
+    'You asked for: ' + escapeHtml(CONSENT) + ' ' +
+    'Every email we send carries a one-click unsubscribe link, and ' +
+    '<a href="' + SITE + '/privacy/" style="color:#7c879c;">this page</a> ' +
+    'says what we store.</p>' +
 
     '</td></tr></table></td></tr></table></body></html>';
 }
@@ -219,7 +240,12 @@ async function sendConfirmation(env, email, token) {
       'something to use. Nothing else, ever.\n\n' +
       'Confirm your email:\n' + link + '\n\n' +
       'If you did not ask for this, ignore it and nothing happens. ' +
-      'We will not write again unless you confirm.',
+      'We will not write again unless you confirm.\n\n' +
+      '--\n' +
+      'Sent by prove10 - hello@prove10.com\n' +
+      'You asked for: ' + CONSENT + '\n' +
+      'Every email we send carries a one-click unsubscribe link.\n' +
+      'What we store: ' + SITE + '/privacy/',
   });
 }
 
@@ -295,11 +321,14 @@ async function subscribe(request, env, headers) {
     // a second token for an address that already has one.
     await env.DB
       .prepare(
-        'insert into signups (email, ip_hash, country, token, created_at) ' +
-        "values (?1, ?2, ?3, ?4, datetime('now')) " +
-        'on conflict(email) do update set unsubscribed_at = null'
+        'insert into signups (email, ip_hash, country, token, consent, created_at) ' +
+        "values (?1, ?2, ?3, ?4, ?5, datetime('now')) " +
+        'on conflict(email) do update set unsubscribed_at = null, ' +
+        // Someone re-entering their address is consenting again, under
+        // whatever wording is on the page now.
+        'consent = excluded.consent'
       )
-      .bind(email, ipHash, country, newToken())
+      .bind(email, ipHash, country, newToken(), CONSENT)
       .run();
 
     const row = await env.DB
