@@ -120,9 +120,12 @@ function page(status, heading, body) {
  * One way out for every mail this Worker sends. Returns false rather
  * than throwing: a mail problem must never cost a signup.
  */
-async function sendMail(env, { to, subject, text, replyTo }) {
+async function sendMail(env, { to, subject, text, html, replyTo }) {
   if (!env.RESEND_API_KEY || !env.MAIL_FROM) return false;
   const payload = { from: env.MAIL_FROM, to: [to], subject, text };
+  // Always send text as well. Some clients prefer it, some people read
+  // only it, and a mail with both parts is treated better by filters.
+  if (html) payload.html = html;
   if (replyTo) payload.reply_to = replyTo;
   try {
     const r = await fetch('https://api.resend.com/emails', {
@@ -146,15 +149,77 @@ async function sendMail(env, { to, subject, text, replyTo }) {
   }
 }
 
+// Email clients are not browsers. Tables, inline styles, a web-safe
+// stack instead of Sora, and a button built as a padded anchor inside a
+// bgcolor cell so it survives Outlook's Word rendering engine.
+const MAIL_FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif";
+
+function confirmationHtml(link) {
+  const href = escapeHtml(link);
+  return '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<meta name="color-scheme" content="dark light">' +
+    '<meta name="supported-color-schemes" content="dark light">' +
+    '<title>Confirm your email</title></head>' +
+    '<body style="margin:0;padding:0;background-color:#06080e;">' +
+    // Preview line in the inbox list, hidden in the body itself.
+    '<div style="display:none;max-height:0;overflow:hidden;opacity:0;">' +
+    'One tap and you are on the list.</div>' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ' +
+    'style="background-color:#06080e;"><tr>' +
+    '<td align="center" style="padding:44px 16px;">' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ' +
+    'style="max-width:460px;"><tr><td>' +
+
+    '<p style="margin:0 0 32px;font-family:' + MAIL_FONT + ';font-size:17px;' +
+    'font-weight:600;letter-spacing:-0.02em;color:#e9edf6;">' +
+    'prove<span style="color:#8fa6ff;">10</span></p>' +
+
+    '<h1 style="margin:0 0 14px;font-family:' + MAIL_FONT + ';font-size:26px;' +
+    'font-weight:400;line-height:1.25;letter-spacing:-0.02em;color:#e9edf6;">' +
+    'One tap and you are on the list.</h1>' +
+
+    '<p style="margin:0 0 30px;font-family:' + MAIL_FONT + ';font-size:16px;' +
+    'line-height:1.6;color:#9aa4b8;">' +
+    'Confirm this address and we will send one email when there is ' +
+    'something to use. Nothing else, ever.</p>' +
+
+    '<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>' +
+    '<td align="center" bgcolor="#e9edf6" style="border-radius:2px;">' +
+    '<a href="' + href + '" style="display:inline-block;padding:15px 30px;' +
+    'font-family:' + MAIL_FONT + ';font-size:16px;font-weight:500;' +
+    'color:#060810;text-decoration:none;border-radius:2px;">' +
+    'Confirm your email</a></td></tr></table>' +
+
+    // The button can be stripped, blocked or rendered unclickable. The
+    // address itself has to be here too, or the mail is a dead end.
+    '<p style="margin:30px 0 0;font-family:' + MAIL_FONT + ';font-size:13px;' +
+    'line-height:1.6;color:#7c879c;">' +
+    'Button not working? Paste this into your browser:<br>' +
+    '<a href="' + href + '" style="color:#8fa6ff;word-break:break-all;">' +
+    href + '</a></p>' +
+
+    '<p style="margin:34px 0 0;padding-top:22px;border-top:1px solid #1d2435;' +
+    'font-family:' + MAIL_FONT + ';font-size:13px;line-height:1.6;color:#5b6479;">' +
+    'If you did not ask for this, ignore it and nothing happens. ' +
+    'We will not write again unless you confirm.</p>' +
+
+    '</td></tr></table></td></tr></table></body></html>';
+}
+
 async function sendConfirmation(env, email, token) {
   const link = 'https://api.prove10.com/confirm?t=' + token;
   return sendMail(env, {
     to: email,
     subject: 'Confirm your email',
+    html: confirmationHtml(link),
     text:
-      'Tap to confirm you want one email from prove10 when there is ' +
-      'something to use:\n\n' + link + '\n\n' +
-      'If you did not ask for this, ignore it and nothing happens.',
+      'One tap and you are on the list.\n\n' +
+      'Confirm this address and we will send one email when there is ' +
+      'something to use. Nothing else, ever.\n\n' +
+      'Confirm your email:\n' + link + '\n\n' +
+      'If you did not ask for this, ignore it and nothing happens. ' +
+      'We will not write again unless you confirm.',
   });
 }
 
