@@ -8,6 +8,7 @@
  *   POST /subscribe      { email } -> { ok: true }
  *   GET  /confirm?t=     double opt-in link from the confirmation email
  *   GET  /unsubscribe?t= the one click the page promises
+ *   GET  /admin          the list, behind HTTP basic auth
  *
  * Deliberate choices:
  *  - /subscribe answers 200 whether the address is new or already
@@ -18,9 +19,10 @@
  *    null. Not confirmed_at: that stays as a record of when consent was
  *    first given, and someone who unsubscribes and later re-enters their
  *    address still has to confirm again before anything is sent.
- *  - Sending is optional. Without RESEND_API_KEY the address is stored
- *    unconfirmed and no mail goes out, which is the state the project
- *    is in until a provider is chosen.
+ *  - Every outbound mail is optional. Without RESEND_API_KEY and
+ *    MAIL_FROM the address is stored and nothing is sent.
+ *  - /admin exists only while ADMIN_PASSWORD is set. Unset means the
+ *    route is closed, not open: no password, no page.
  */
 
 const ALLOWED_ORIGINS = new Set([
@@ -33,6 +35,10 @@ const EMAIL = /^[^@\s]+@[^@\s.]+\.[^@\s]{2,}$/;
 
 const MAX_PER_IP_PER_HOUR = 10;
 const SITE = 'https://prove10.com';
+
+// The list is small for a long time yet, and a cap keeps one bad query
+// from pulling the whole table into a phone browser.
+const ADMIN_PAGE_ROWS = 500;
 
 function corsHeaders(origin) {
   const headers = {
@@ -55,8 +61,12 @@ function json(status, payload, headers) {
   });
 }
 
+async function sha256Bytes(input) {
+  return crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+}
+
 async function sha256Hex(input) {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  const digest = await sha256Bytes(input);
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
@@ -71,23 +81,26 @@ function escapeHtml(s) {
   ));
 }
 
+/** Shared chrome, so every reply from this Worker looks like the site. */
+const SHELL_CSS =
+  ':root{color-scheme:dark}' +
+  'body{margin:0;min-height:100svh;background:#06080e;color:#e9edf6;' +
+  'font-family:Sora,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;' +
+  'font-weight:300;line-height:1.6;' +
+  'padding-left:max(16px,env(safe-area-inset-left,0px));' +
+  'padding-right:max(16px,env(safe-area-inset-right,0px))}' +
+  'h1{margin:0;font-size:clamp(1.6rem,1rem + 2.4vw,2.4rem);font-weight:300;letter-spacing:-0.03em}' +
+  'a{color:#8fa6ff;text-underline-offset:3px}';
+
 /** A reply in the same clothes as the page, so a link does not land somewhere strange. */
 function page(status, heading, body) {
   const html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
     '<meta name="color-scheme" content="dark"><title>prove10</title>' +
-    '<style>' +
-    ':root{color-scheme:dark}' +
-    'body{margin:0;min-height:100svh;display:grid;place-items:center;' +
-    'background:#06080e;color:#e9edf6;text-align:center;' +
-    'font-family:Sora,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;' +
-    'font-weight:300;line-height:1.6;' +
-    'padding-left:max(16px,env(safe-area-inset-left,0px));' +
-    'padding-right:max(16px,env(safe-area-inset-right,0px))}' +
+    '<style>' + SHELL_CSS +
+    'body{display:grid;place-items:center;text-align:center}' +
     'main{display:grid;gap:1rem;max-width:34ch}' +
-    'h1{margin:0;font-size:clamp(1.6rem,1rem + 2.4vw,2.4rem);font-weight:300;letter-spacing:-0.03em}' +
     'p{margin:0;color:#7c879c}' +
-    'a{color:#8fa6ff;text-underline-offset:3px}' +
     '</style></head><body><main>' +
     '<h1>' + escapeHtml(heading) + '</h1>' +
     '<p>' + escapeHtml(body) + '</p>' +
@@ -95,17 +108,22 @@ function page(status, heading, body) {
     '</main></body></html>';
   return new Response(html, {
     status,
-    headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'X-Robots-Tag': 'noindex, nofollow',
+    },
   });
 }
 
 /**
- * Sends the confirmation mail when a provider is configured. Returns
- * quietly otherwise: a missing key must never cost the signup.
+ * One way out for every mail this Worker sends. Returns false rather
+ * than throwing: a mail problem must never cost a signup.
  */
-async function sendConfirmation(env, email, token) {
-  if (!env.RESEND_API_KEY || !env.MAIL_FROM) return;
-  const link = 'https://api.prove10.com/confirm?t=' + token;
+async function sendMail(env, { to, subject, text, replyTo }) {
+  if (!env.RESEND_API_KEY || !env.MAIL_FROM) return false;
+  const payload = { from: env.MAIL_FROM, to: [to], subject, text };
+  if (replyTo) payload.reply_to = replyTo;
   try {
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -113,20 +131,50 @@ async function sendConfirmation(env, email, token) {
         Authorization: 'Bearer ' + env.RESEND_API_KEY,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        from: env.MAIL_FROM,
-        to: [email],
-        subject: 'Confirm your email',
-        text:
-          'Tap to confirm you want one email from prove10 when there is ' +
-          'something to use:\n\n' + link + '\n\n' +
-          'If you did not ask for this, ignore it and nothing happens.',
-      }),
+      body: JSON.stringify(payload),
     });
-    if (!r.ok) console.error('resend refused', r.status, await r.text());
+    if (!r.ok) {
+      // Logged, not swallowed: retained logs are how a refused send
+      // gets read after the fact. Never log the key.
+      console.error('resend refused', r.status, await r.text());
+      return false;
+    }
+    return true;
   } catch (err) {
-    console.error('confirmation mail failed', err);
+    console.error('mail failed', err);
+    return false;
   }
+}
+
+async function sendConfirmation(env, email, token) {
+  const link = 'https://api.prove10.com/confirm?t=' + token;
+  return sendMail(env, {
+    to: email,
+    subject: 'Confirm your email',
+    text:
+      'Tap to confirm you want one email from prove10 when there is ' +
+      'something to use:\n\n' + link + '\n\n' +
+      'If you did not ask for this, ignore it and nothing happens.',
+  });
+}
+
+/**
+ * Tells the owner about a new signup, but only once NOTIFY_TO is set.
+ * That secret is the on switch: no address, no notification.
+ */
+async function notifyOwner(env, { email, country, total }) {
+  if (!env.NOTIFY_TO) return false;
+  return sendMail(env, {
+    to: env.NOTIFY_TO,
+    subject: 'New prove10 signup: ' + email,
+    replyTo: email,
+    text:
+      email + '\n' +
+      'Country: ' + (country || 'unknown') + '\n' +
+      'Total on the list: ' + total + '\n\n' +
+      'They still have to confirm before anything can be sent to them.\n' +
+      'The list: https://api.prove10.com/admin',
+  });
 }
 
 async function subscribe(request, env, headers) {
@@ -155,8 +203,17 @@ async function subscribe(request, env, headers) {
   }
 
   const ipHash = await sha256Hex((request.headers.get('CF-Connecting-IP') ?? '') + env.IP_SALT);
+  const country = request.cf?.country ?? null;
 
   try {
+    // Asked before the upsert, because `insert ... on conflict do update`
+    // reports changes = 1 either way and cannot tell us which happened.
+    const existing = await env.DB
+      .prepare('select email from signups where email = ?1')
+      .bind(email)
+      .first();
+    const isNew = !existing;
+
     const recent = await env.DB
       .prepare(
         'select count(*) as n from signups ' +
@@ -177,7 +234,7 @@ async function subscribe(request, env, headers) {
         "values (?1, ?2, ?3, ?4, datetime('now')) " +
         'on conflict(email) do update set unsubscribed_at = null'
       )
-      .bind(email, ipHash, request.cf?.country ?? null, newToken())
+      .bind(email, ipHash, country, newToken())
       .run();
 
     const row = await env.DB
@@ -187,6 +244,20 @@ async function subscribe(request, env, headers) {
 
     if (row?.token && !row.confirmed) {
       await sendConfirmation(env, email, row.token);
+    }
+
+    // Only a genuinely new row is worth telling the owner about; a
+    // re-submit of an address already on the list is not news.
+    if (isNew) {
+      // No address here on purpose: retained logs are not the place for
+      // one. The admin page is where addresses are read.
+      console.log('signup stored: new row');
+      const totals = await env.DB
+        .prepare('select count(*) as n from signups')
+        .first();
+      await notifyOwner(env, { email, country, total: totals?.n ?? 0 });
+    } else {
+      console.log('signup stored: existing row');
     }
   } catch (err) {
     console.error('d1 write failed', err);
@@ -238,6 +309,126 @@ async function unsubscribe(url, env) {
   return page(200, 'Removed', 'You will not hear from us again. No hard feelings.');
 }
 
+/**
+ * HTTP basic auth. The username is ignored; only the password is
+ * checked, against a constant-time comparison of SHA-256 digests so a
+ * wrong guess takes the same time whatever its first characters are.
+ */
+async function authorized(request, env) {
+  if (!env.ADMIN_PASSWORD) return false;
+
+  const header = request.headers.get('Authorization') ?? '';
+  const space = header.indexOf(' ');
+  if (space < 0 || header.slice(0, space).toLowerCase() !== 'basic') return false;
+
+  let decoded;
+  try {
+    decoded = atob(header.slice(space + 1).trim());
+  } catch {
+    return false;
+  }
+
+  const colon = decoded.indexOf(':');
+  if (colon < 0) return false;
+
+  const [supplied, expected] = await Promise.all([
+    sha256Bytes(decoded.slice(colon + 1)),
+    sha256Bytes(env.ADMIN_PASSWORD),
+  ]);
+  return crypto.subtle.timingSafeEqual(supplied, expected);
+}
+
+function askForPassword() {
+  return new Response('Authentication required.', {
+    status: 401,
+    headers: {
+      'WWW-Authenticate': 'Basic realm="prove10", charset="UTF-8"',
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'X-Robots-Tag': 'noindex, nofollow',
+    },
+  });
+}
+
+/** The list. Addresses are on this page, so it is never cached or indexed. */
+async function admin(request, env) {
+  if (!await authorized(request, env)) return askForPassword();
+
+  const { results } = await env.DB
+    .prepare(
+      'select email, country, confirmed, confirmed_at, unsubscribed_at, created_at ' +
+      'from signups order by created_at desc limit ?1'
+    )
+    .bind(ADMIN_PAGE_ROWS)
+    .all();
+
+  const rows = results ?? [];
+  const mailable = rows.filter((r) => r.confirmed && !r.unsubscribed_at).length;
+  const waiting = rows.filter((r) => !r.confirmed && !r.unsubscribed_at).length;
+  const gone = rows.filter((r) => r.unsubscribed_at).length;
+
+  const state = (r) => {
+    if (r.unsubscribed_at) return ['gone', 'unsubscribed'];
+    if (r.confirmed) return ['ok', 'confirmed'];
+    return ['wait', 'unconfirmed'];
+  };
+
+  const body = rows.map((r) => {
+    const [cls, label] = state(r);
+    return '<tr><td class="e">' + escapeHtml(r.email) + '</td>' +
+      '<td>' + escapeHtml(r.country || '—') + '</td>' +
+      '<td><span class="tag ' + cls + '">' + label + '</span></td>' +
+      '<td class="t">' + escapeHtml(r.created_at) + '</td></tr>';
+  }).join('');
+
+  const html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+    '<meta name="color-scheme" content="dark"><meta name="robots" content="noindex, nofollow">' +
+    '<title>prove10 list</title><style>' + SHELL_CSS +
+    'body{padding-block:clamp(1.5rem,5vh,2.75rem)}' +
+    'main{max-width:60rem;margin-inline:auto;display:grid;gap:1.5rem}' +
+    '.counts{display:flex;flex-wrap:wrap;gap:1.5rem;margin:0;padding:0;list-style:none;' +
+    'font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:0.8125rem;color:#7c879c}' +
+    '.counts b{display:block;font-size:1.5rem;font-weight:400;color:#e9edf6}' +
+    '.wrap{overflow-x:auto}' +
+    'table{width:100%;border-collapse:collapse;font-size:0.875rem}' +
+    'th{text-align:left;font-weight:400;color:#7c879c;padding:0.5rem 0.75rem 0.5rem 0;' +
+    'border-bottom:1px solid #39425a;white-space:nowrap}' +
+    'td{padding:0.6rem 0.75rem 0.6rem 0;border-bottom:1px solid #141a2a;vertical-align:top}' +
+    '.e{word-break:break-all}' +
+    '.t{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;' +
+    'font-size:0.75rem;color:#7c879c;white-space:nowrap}' +
+    '.tag{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:0.6875rem;' +
+    'padding:0.15rem 0.45rem;border:1px solid currentColor;border-radius:2px;white-space:nowrap}' +
+    '.tag.ok{color:#8fa6ff}.tag.wait{color:#7c879c}.tag.gone{color:#5b6479}' +
+    '.foot{margin:0;font-size:0.8125rem;color:#7c879c}' +
+    '</style></head><body><main>' +
+    '<h1>The list</h1>' +
+    '<ul class="counts">' +
+    '<li><b>' + mailable + '</b>mailable</li>' +
+    '<li><b>' + waiting + '</b>awaiting confirmation</li>' +
+    '<li><b>' + gone + '</b>unsubscribed</li>' +
+    '</ul>' +
+    (rows.length
+      ? '<div class="wrap"><table><thead><tr><th>Email</th><th>Country</th>' +
+        '<th>State</th><th>Signed up (UTC)</th></tr></thead><tbody>' + body +
+        '</tbody></table></div>'
+      : '<p class="foot">Nobody yet.</p>') +
+    '<p class="foot">Only the mailable count may be sent to. ' +
+    'Newest first, up to ' + ADMIN_PAGE_ROWS + ' rows.</p>' +
+    '</main></body></html>';
+
+  return new Response(html, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store, private',
+      'X-Robots-Tag': 'noindex, nofollow',
+      'Referrer-Policy': 'no-referrer',
+    },
+  });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -259,6 +450,13 @@ export default {
         return json(405, { error: 'method not allowed' }, { ...headers, Allow: 'GET' });
       }
       return url.pathname === '/confirm' ? confirm(url, env) : unsubscribe(url, env);
+    }
+
+    if (url.pathname === '/admin') {
+      if (request.method !== 'GET') {
+        return json(405, { error: 'method not allowed' }, { Allow: 'GET' });
+      }
+      return admin(request, env);
     }
 
     return json(404, { error: 'not found' }, headers);

@@ -12,3 +12,9 @@ custom_domain = true
 binding = "DB"
 database_name = "prove10-signups"
 database_id = "c3ddbd73-6496-4751-8084-6c78d9acd36e"
+
+# Retained logs, so a failed send can be read after the fact instead of
+# only while someone is watching `wrangler tail`.
+[observability]
+enabled = true
+head_sampling_rate = 1
