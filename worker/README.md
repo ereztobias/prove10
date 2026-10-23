@@ -18,7 +18,7 @@ the page calls it cross-origin, with CORS limited to the two real origins.
 | `POST /subscribe` | `{ "email": "..." }` → `{ "ok": true }`, stores the row, mails the confirmation link if a provider is configured |
 | `GET /confirm?t=` | sets `confirmed = 1` and `confirmed_at` |
 | `GET /unsubscribe?t=` | sets `unsubscribed_at`, clears `confirmed` |
-| `GET /admin` | the list, behind HTTP basic auth |
+| `GET /admin`, `GET /emails` | the same list, behind HTTP basic auth |
 
 `/confirm` and `/unsubscribe` return a small dark page in the site's own
 clothes. The token is 32 random bytes as hex and is per address, not per
@@ -46,7 +46,7 @@ npx wrangler deploy
 
 ## The list page
 
-`https://api.prove10.com/admin` shows every address with its state and
+`https://api.prove10.com/emails` (or `/admin`) shows every address with its state and
 the three counts that matter: mailable, awaiting confirmation,
 unsubscribed. It is the reason not to go hunting in the Resend log,
 which only records sends and expires.

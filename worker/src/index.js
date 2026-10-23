@@ -517,7 +517,10 @@ export default {
       return url.pathname === '/confirm' ? confirm(url, env) : unsubscribe(url, env);
     }
 
-    if (url.pathname === '/admin') {
+    // /emails is the name that gets typed, /admin the one that got
+    // built. Both open the same page rather than one being a redirect,
+    // so a basic-auth prompt is never thrown away by a 30x hop.
+    if (url.pathname === '/admin' || url.pathname === '/emails') {
       if (request.method !== 'GET') {
         return json(405, { error: 'method not allowed' }, { Allow: 'GET' });
       }
