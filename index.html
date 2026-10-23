@@ -96,8 +96,10 @@
         body: JSON.stringify({ email: value })
       }).then(function (r) {
         if (!r.ok) throw new Error(r.status);
-        form.innerHTML = '<p class="done">You are on the list. Nothing else to do.</p>';
-        say('');
+        // Not on the list yet. The address is stored but unconfirmed,
+        // and nothing is ever sent to it until that link is used.
+        form.innerHTML = '<p class="done">Check your inbox. Tap the link we just sent and you are in.</p>';
+        say('Nothing after a minute? Look in spam.');
       }).catch(function () {
         // The endpoint is real now, so a failure is a failure: leave the
         // form standing so they can simply try again.
