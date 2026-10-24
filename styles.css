@@ -225,6 +225,18 @@ h1 em {
 }
 .contact:hover { color: var(--ink); border-color: var(--accent); }
 
+/* A 22px line of type is a small thing to hit with a thumb. The target
+   grows to 44px without the text moving: padding would push the
+   border-bottom underline away from the words, so the hit area is an
+   invisible overlay instead. The -6px sides still leave a 12px dead
+   gap between the two links, so neither steals the other's taps. */
+.bottom a { position: relative; }
+.bottom a::after {
+  content: "";
+  position: absolute;
+  inset: -11px -6px;
+}
+
 .rights { color: var(--faint); }
 
 /* The footer carries two links now, kept together on the left so the
