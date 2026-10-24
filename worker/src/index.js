@@ -222,7 +222,7 @@ function confirmationHtml(link) {
     '<a href="mailto:hello@prove10.com" style="color:#7c879c;">hello@prove10.com</a><br>' +
     'You asked for: ' + escapeHtml(CONSENT) + ' ' +
     'Every email we send carries a one-click unsubscribe link, and ' +
-    '<a href="' + SITE + '/privacy/" style="color:#7c879c;">this page</a> ' +
+    'our <a href="' + SITE + '/privacy/" style="color:#7c879c;">privacy policy</a> ' +
     'says what we store.</p>' +
 
     '</td></tr></table></td></tr></table></body></html>';
@@ -245,7 +245,7 @@ async function sendConfirmation(env, email, token) {
       'Sent by prove10 - hello@prove10.com\n' +
       'You asked for: ' + CONSENT + '\n' +
       'Every email we send carries a one-click unsubscribe link.\n' +
-      'What we store: ' + SITE + '/privacy/',
+      'Privacy policy: ' + SITE + '/privacy/',
   });
 }
 
