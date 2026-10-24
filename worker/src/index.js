@@ -166,7 +166,20 @@ async function sendMail(env, { to, subject, text, html, replyTo }) {
 // bgcolor cell so it survives Outlook's Word rendering engine.
 const MAIL_FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif";
 
-function confirmationHtml(link) {
+/**
+ * The postal address a commercial email is expected to carry. Kept in a
+ * secret rather than in this file so it can be set once the company has
+ * an address to give, without a code change.
+ *
+ * Unset, nothing is printed. A footer line reading "undefined" under the
+ * sender's name is worse than no line at all.
+ */
+function postalLine(env) {
+  const value = (env.POSTAL_ADDRESS ?? '').trim();
+  return value.length ? value : null;
+}
+
+function confirmationHtml(link, postal) {
   const href = escapeHtml(link);
   return '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
@@ -220,6 +233,7 @@ function confirmationHtml(link) {
     'We will not write again unless you confirm.<br><br>' +
     'Sent by prove10 &middot; ' +
     '<a href="mailto:hello@prove10.com" style="color:#7c879c;">hello@prove10.com</a><br>' +
+    (postal ? escapeHtml(postal) + '<br>' : '') +
     'You asked for: ' + escapeHtml(CONSENT) + ' ' +
     'Every email we send carries a one-click unsubscribe link, and ' +
     'our <a href="' + SITE + '/privacy/" style="color:#7c879c;">privacy policy</a> ' +
@@ -230,10 +244,11 @@ function confirmationHtml(link) {
 
 async function sendConfirmation(env, email, token) {
   const link = 'https://api.prove10.com/confirm?t=' + token;
+  const postal = postalLine(env);
   return sendMail(env, {
     to: email,
     subject: 'Confirm your email',
-    html: confirmationHtml(link),
+    html: confirmationHtml(link, postal),
     text:
       'One tap and you are on the list.\n\n' +
       'Confirm this address and we will send one email when there is ' +
@@ -243,6 +258,7 @@ async function sendConfirmation(env, email, token) {
       'We will not write again unless you confirm.\n\n' +
       '--\n' +
       'Sent by prove10 - hello@prove10.com\n' +
+      (postal ? postal + '\n' : '') +
       'You asked for: ' + CONSENT + '\n' +
       'Every email we send carries a one-click unsubscribe link.\n' +
       'Privacy policy: ' + SITE + '/privacy/',

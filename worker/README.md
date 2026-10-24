@@ -110,6 +110,23 @@ delivers, which means DKIM and SPF records in Cloudflare DNS for
 `prove10.com`. Those are additions, and they do not touch the apex A
 records GitHub Pages needs.
 
+## The postal address
+
+```sh
+npx wrangler secret put POSTAL_ADDRESS   # e.g. prove10, 12 Example St, Tel Aviv 6120101, Israel
+```
+
+Set it and it prints on its own line in every mail footer, under the
+contact address. Unset and the line is simply absent, which is why the
+code checks rather than interpolating: a footer reading `undefined`
+under the sender's name is worse than no footer line.
+
+A commercial email is expected to carry a real postal address; a
+home address is lawful and ordinary for a company that has none yet.
+The confirmation mail is transactional and arguably exempt, but it
+costs nothing to carry the line there too, and it means the first real
+send inherits it instead of needing a code change on the day.
+
 ## Who may be mailed
 
 **Only this set.** Nothing else should ever feed a send:
