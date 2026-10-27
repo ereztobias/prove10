@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>prove10 — nothing here</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#06080e">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23070910'/><text y='23' x='4' font-size='18' font-family='system-ui' font-weight='600' fill='%238fa6ff'>10</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- Absolute, not relative. GitHub Pages serves this file for a miss at
+     any depth, so /a/b/c would resolve styles.css against /a/b/. -->
+<link rel="stylesheet" href="/styles.css">
+<style>
+  /* The one thing this page adds: a way back. Sized like body text
+     rather than a button, because it is an offer, not an instruction. */
+  .back {
+    margin: 0;
+    color: var(--muted);
+  }
+  .back a {
+    color: var(--ink);
+    text-decoration-color: var(--faint);
+    text-underline-offset: 4px;
+    transition: text-decoration-color 160ms ease;
+  }
+  .back a:hover { text-decoration-color: var(--accent); }
+</style>
+</head>
+<body>
+  <div class="field" aria-hidden="true"></div>
+
+  <div class="page">
+
+    <header class="top">
+      <a class="wordmark" href="/" style="color:inherit;text-decoration:none">prove<b>10</b></a>
+      <span class="chip"><i></i>404</span>
+    </header>
+
+    <main class="stage reveal">
+      <h1 style="--d:0ms">
+        Nothing here.
+        <em>Not yet, anyway.</em>
+      </h1>
+
+      <p class="back" style="--d:180ms">There is one page so far, and this
+        is not it. <a href="/">Go to it</a>.</p>
+    </main>
+
+    <footer class="bottom reveal">
+      <span class="foot-links" style="--d:280ms">
+        <a class="contact" href="mailto:hello@prove10.com">hello@prove10.com</a>
+        <a class="contact" href="/privacy/">Privacy policy</a>
+      </span>
+      <span class="rights" style="--d:280ms">&copy; <span id="year">2026</span> prove10</span>
+    </footer>
+
+  </div>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
