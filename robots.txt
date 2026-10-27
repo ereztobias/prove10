@@ -1,0 +1,17 @@
+# prove10.com
+#
+# One page and a privacy policy. Both are meant to be found, so nothing
+# here is disallowed. This file exists to say that deliberately, and to
+# keep crawlers out of the one path that is not ours to advertise.
+#
+# robots.txt is per-host. This file governs prove10.com only; it has no
+# authority over api.prove10.com, which serves the signup endpoint and
+# the admin list. That host needs its own rules, served by the Worker.
+
+User-agent: *
+Allow: /
+
+# A 404 is not worth a crawl budget, and it is already noindex.
+Disallow: /404.html
+
+Sitemap: https://prove10.com/sitemap.xml
