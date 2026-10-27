@@ -1,2 +1,8 @@
 Thumbs.db
 .DS_Store
+
+# Other projects that happen to live inside this folder. They are their
+# own git repositories; `git add -A` turns them into broken gitlinks and
+# publishes their names on a public repo.
+aipdfsign/
+testai/
