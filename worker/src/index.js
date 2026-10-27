@@ -572,6 +572,20 @@ export default {
       return admin(request, env);
     }
 
+    // robots.txt is per-host, and this host is not prove10.com. Every
+    // response here already carries X-Robots-Tag: noindex, but a crawler
+    // reads robots.txt before it fetches anything else, so the rule is
+    // stated up front rather than left to a header it has not seen yet.
+    if (url.pathname === '/robots.txt') {
+      return new Response('User-agent: *\nDisallow: /\n', {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'public, max-age=86400',
+        },
+      });
+    }
+
     return json(404, { error: 'not found' }, headers);
   },
 };
