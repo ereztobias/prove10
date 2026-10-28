@@ -21,7 +21,14 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html { -webkit-text-size-adjust: 100%; }
+/* Reserve the scrollbar on every page, scrolling or not. Without this the
+   home page (one screen, no scrollbar) and the privacy page (scrolls, so
+   Windows gives it a classic 15px bar) centre into different widths, and
+   the lockup jumps ~8px sideways as you move between them. */
+html {
+  -webkit-text-size-adjust: 100%;
+  scrollbar-gutter: stable;
+}
 
 body {
   margin: 0;
@@ -40,6 +47,10 @@ body {
 .field {
   position: fixed;
   inset: 0;
+  /* The reserved scrollbar gutter sits outside the containing block, so
+     inset:0 alone leaves a flat strip beside the gradient. vw counts the
+     gutter, and an over-constrained box drops the right offset. */
+  width: 100vw;
   z-index: 0;
   pointer-events: none;
   background:
@@ -86,6 +97,8 @@ body {
 .wordmark {
   display: inline-flex;
   align-items: center;
+  color: inherit;
+  text-decoration: none;
   font-size: 1.0625rem;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -131,6 +144,14 @@ body {
   border-radius: 50%;
   background: var(--accent);
   box-shadow: 0 0 0 3px rgb(143 166 255 / 0.14);
+}
+
+/* The chip names what the page is, so it belongs with the sentence that
+   says the rest. Opposite the wordmark it read as a second brand mark,
+   and it was the only thing making the three headers differ. */
+.stage > .chip {
+  justify-self: start;
+  margin: 0 0 -0.6rem;
 }
 
 /* ---------- the one screen ---------- */
