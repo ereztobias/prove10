@@ -1,0 +1,21 @@
+{
+  "name": "prove10-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "migrate:local": "wrangler d1 execute prove10-signups --local --file=./schema.sql",
+    "migrate:remote": "wrangler d1 execute prove10-signups --remote --file=./schema.sql"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.4.10",
+    "vitest": "^4.1.10",
+    "wrangler": "^4.151.1"
+  }
+}

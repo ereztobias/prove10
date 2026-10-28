@@ -6,7 +6,11 @@ create table if not exists signups (
   token           text,
   confirmed_at    text,
   unsubscribed_at text,
-  created_at      text not null
+  created_at      text not null,
+  -- What each person agreed to, verbatim. Added by migration 0003 and
+  -- carried here too: this file is what a fresh database is built from,
+  -- and the Worker writes this column on every signup.
+  consent         text
 );
 
 -- supports the per-IP rate limit lookup
