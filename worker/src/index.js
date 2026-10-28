@@ -82,6 +82,8 @@ async function sha256Hex(input) {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+const TOKEN_RE = /^[0-9a-f]{64}$/;
+
 function newToken() {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -108,7 +110,11 @@ const SHELL_CSS =
   '.wordmark b{font-weight:600;color:#8fa6ff}' +
   '.mark{flex:none;width:1.3em;height:1.3em;margin-right:0.45em}' +
   '.mark circle{fill:none;stroke:#8fa6ff;stroke-width:3.2}' +
-  '.mark .bolt{fill:currentColor;stroke:none}';
+  '.mark .bolt{fill:currentColor;stroke:none}' +
+  'form{margin:0}' +
+  '.go{display:inline-block;padding:0.85rem 1.35rem;font:inherit;font-weight:400;' +
+  'color:#060810;background:#e9edf6;border:1px solid #e9edf6;border-radius:2px;cursor:pointer}' +
+  '.go:hover{background:#fff;border-color:#fff}';
 
 /**
  * The same lockup the site carries. Drawn as geometry rather than set in
@@ -130,7 +136,7 @@ const ICONS =
   '<link rel="apple-touch-icon" href="' + SITE + '/apple-touch-icon.png">';
 
 /** A reply in the same clothes as the page, so a link does not land somewhere strange. */
-function page(status, heading, body) {
+function page(status, heading, body, extra) {
   const html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
     '<meta name="color-scheme" content="dark"><title>Prove10</title>' + ICONS +
@@ -144,6 +150,9 @@ function page(status, heading, body) {
     LOCKUP +
     '<h1>' + escapeHtml(heading) + '</h1>' +
     '<p>' + escapeHtml(body) + '</p>' +
+    // Built here, never from the request, so it is the one part of the
+    // page that is not escaped.
+    (extra ?? '') +
     '</main></body></html>';
   return new Response(html, {
     status,
@@ -404,9 +413,39 @@ async function subscribe(request, env, headers) {
   return json(200, { ok: true }, headers);
 }
 
+/**
+ * What a link in an email now opens. It changes nothing: a mail security
+ * scanner that fetches every URL before the recipient sees it would
+ * otherwise confirm the address for them -- which makes the second half
+ * of the double opt-in a fiction -- or unsubscribe them without their
+ * knowing. The state change needs the button, and the button posts.
+ *
+ * The token rides in the action query rather than a hidden field, which
+ * is also where RFC 8058 one-click expects it: a provider that posts
+ * List-Unsubscribe=One-Click to the same URL is served by the same route.
+ */
+function askToAct(url, isConfirm) {
+  const token = url.searchParams.get('t') ?? '';
+  if (!TOKEN_RE.test(token)) {
+    return page(400, 'That link is not valid', 'Check it and try again.');
+  }
+  const form =
+    '<form method="post" action="' + (isConfirm ? '/confirm' : '/unsubscribe') +
+    '?t=' + escapeHtml(token) + '">' +
+    '<button class="go" type="submit">' +
+    (isConfirm ? 'Confirm my email' : 'Unsubscribe') +
+    '</button></form>';
+
+  return isConfirm
+    ? page(200, 'One tap and you are in',
+        'Press the button and this address is on the list.', form)
+    : page(200, 'Leaving the list?',
+        'Press the button and you will not hear from us again.', form);
+}
+
 async function confirm(url, env) {
   const token = url.searchParams.get('t') ?? '';
-  if (!/^[0-9a-f]{64}$/.test(token)) {
+  if (!TOKEN_RE.test(token)) {
     return page(400, 'That link is not valid', 'Check it and try again.');
   }
 
@@ -442,7 +481,7 @@ async function confirm(url, env) {
 
 async function unsubscribe(url, env) {
   const token = url.searchParams.get('t') ?? '';
-  if (!/^[0-9a-f]{64}$/.test(token)) {
+  if (!TOKEN_RE.test(token)) {
     return page(400, 'That link is not valid', 'Check it and try again.');
   }
 
@@ -598,10 +637,13 @@ export default {
     }
 
     if (url.pathname === '/confirm' || url.pathname === '/unsubscribe') {
-      if (request.method !== 'GET') {
-        return json(405, { error: 'method not allowed' }, { ...headers, Allow: 'GET' });
+      const isConfirm = url.pathname === '/confirm';
+      if (request.method === 'GET') return askToAct(url, isConfirm);
+      if (request.method === 'POST') {
+        return isConfirm ? confirm(url, env) : unsubscribe(url, env);
       }
-      return url.pathname === '/confirm' ? confirm(url, env) : unsubscribe(url, env);
+      return json(405, { error: 'method not allowed' },
+        { ...headers, Allow: 'GET, POST, OPTIONS' });
     }
 
     // /emails is the name that gets typed, /admin the one that got
