@@ -48,11 +48,17 @@ jobs:
             curl -fsSL --retry 3 -o "$RUNNER_TEMP/testai/$f" "https://testai.prove10.com/bin/$f"
           done
 
+      # Says why rather than failing red when the ingest token has not
+      # been added yet: that is setup left undone, not a broken build.
       - name: Record the run in testai
         if: ${{ !cancelled() }}
         env:
           TESTAI_TOKEN: ${{ secrets.TESTAI_TOKEN_PROVE10 }}
         run: |
+          if [ -z "$TESTAI_TOKEN" ]; then
+            echo "::notice::TESTAI_TOKEN_PROVE10 is not set, so this run was not recorded."
+            exit 0
+          fi
           test -f "$RUNNER_TEMP/report.json" || { echo "::error::vitest wrote no report"; exit 1; }
           node "$RUNNER_TEMP/testai/testai-record.mjs" --project prove10 \
             --from "$RUNNER_TEMP/report.json" --commit "${GITHUB_SHA::7}"
