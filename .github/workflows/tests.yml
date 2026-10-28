@@ -1,0 +1,62 @@
+# The suite runs here, on this repo's own Actions minutes, and reports to
+# testai. The tests live in worker/, which is why every step below runs
+# there: the repo root is a static site with no package.json.
+name: tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+
+      - run: npm ci
+
+      # A red suite is still a result: record it, then fail the job.
+      - name: Run the suite
+        id: suite
+        continue-on-error: true
+        run: npx vitest run --reporter=default --reporter=json --outputFile.json="$RUNNER_TEMP/report.json"
+
+      # Fetched rather than vendored, so a new version of the recorder
+      # costs this job nothing. version.json names the files to take.
+      - name: Fetch the recorder
+        if: ${{ !cancelled() }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/testai"
+          for f in testai-record.mjs reduce.mjs; do
+            curl -fsSL --retry 3 -o "$RUNNER_TEMP/testai/$f" "https://testai.prove10.com/bin/$f"
+          done
+
+      - name: Record the run in testai
+        if: ${{ !cancelled() }}
+        env:
+          TESTAI_TOKEN: ${{ secrets.TESTAI_TOKEN_PROVE10 }}
+        run: |
+          test -f "$RUNNER_TEMP/report.json" || { echo "::error::vitest wrote no report"; exit 1; }
+          node "$RUNNER_TEMP/testai/testai-record.mjs" --project prove10 \
+            --from "$RUNNER_TEMP/report.json" --commit "${GITHUB_SHA::7}"
+
+      - name: Fail if the suite failed
+        if: ${{ steps.suite.outcome == 'failure' }}
+        run: exit 1
