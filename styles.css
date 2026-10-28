@@ -84,11 +84,43 @@ body {
 }
 
 .wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 1.0625rem;
   font-weight: 600;
   letter-spacing: -0.02em;
 }
 .wordmark b { font-weight: 600; color: var(--accent); }
+
+/* The mark is sized in em, so it tracks the wordmark rather than needing
+   a second decision every time the type changes. Strokes are geometry,
+   not type: no font to load and nothing to go wrong at 16px. */
+.mark {
+  flex: none;
+  width: 1.55em;
+  height: 1.3em;
+}
+.mark circle {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+.mark path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* The ring breaks where the stroke crosses it. Painted in the page
+   colour rather than cut out of the circle, so one shape stays one
+   shape and the gap tracks the background if it ever changes. */
+.mark .knock {
+  stroke: var(--ground);
+  stroke-width: 6;
+  stroke-linecap: butt;
+}
 
 .chip {
   display: inline-flex;

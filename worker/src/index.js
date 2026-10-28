@@ -198,7 +198,7 @@ function confirmationHtml(link, postal) {
 
     '<p style="margin:0 0 32px;font-family:' + MAIL_FONT + ';font-size:17px;' +
     'font-weight:600;letter-spacing:-0.02em;color:#e9edf6;">' +
-    'prove<span style="color:#8fa6ff;">10</span></p>' +
+    'Prove<span style="color:#8fa6ff;">10</span></p>' +
 
     '<h1 style="margin:0 0 14px;font-family:' + MAIL_FONT + ';font-size:26px;' +
     'font-weight:400;line-height:1.25;letter-spacing:-0.02em;color:#e9edf6;">' +
