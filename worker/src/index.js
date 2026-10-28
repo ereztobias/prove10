@@ -410,16 +410,30 @@ async function confirm(url, env) {
     return page(400, 'That link is not valid', 'Check it and try again.');
   }
 
+  // The token never rotates, so the first confirmation email stays live
+  // in the inbox forever. Clearing unsubscribed_at here meant one tap on
+  // that old mail put someone back on a list they had left, which is the
+  // opposite of what /privacy/ promises. Re-subscribing is the only way
+  // back, and subscribe() clears the flag itself.
   const r = await env.DB
     .prepare(
       'update signups set confirmed = 1, ' +
-      "confirmed_at = coalesce(confirmed_at, datetime('now')), " +
-      'unsubscribed_at = null where token = ?1'
+      "confirmed_at = coalesce(confirmed_at, datetime('now')) " +
+      'where token = ?1 and unsubscribed_at is null'
     )
     .bind(token)
     .run();
 
   if (!r.meta?.changes) {
+    const left = await env.DB
+      .prepare('select 1 as n from signups where token = ?1 and unsubscribed_at is not null')
+      .bind(token)
+      .first();
+    if (left) {
+      return page(409, 'You unsubscribed from this list',
+        'This is an older email, and the link in it no longer adds you back. ' +
+        'If that was a mistake, sign up again at prove10.com.');
+    }
     return page(404, 'That link has expired', 'Sign up again and we will send a fresh one.');
   }
   return page(200, 'Confirmed',
