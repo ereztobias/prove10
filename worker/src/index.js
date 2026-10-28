@@ -1,5 +1,5 @@
 /**
- * prove10 signup endpoint.
+ * Prove10 signup endpoint.
  *
  * Runs on api.prove10.com so the apex stays DNS-only and GitHub Pages
  * keeps renewing its own certificate. Stores addresses in D1.
@@ -102,21 +102,41 @@ const SHELL_CSS =
   'padding-left:max(16px,env(safe-area-inset-left,0px));' +
   'padding-right:max(16px,env(safe-area-inset-right,0px))}' +
   'h1{margin:0;font-size:clamp(1.6rem,1rem + 2.4vw,2.4rem);font-weight:300;letter-spacing:-0.03em}' +
-  'a{color:#8fa6ff;text-underline-offset:3px}';
+  'a{color:#8fa6ff;text-underline-offset:3px}' +
+  '.wordmark{display:inline-flex;align-items:center;font-size:1.0625rem;font-weight:600;' +
+  'letter-spacing:-0.02em;color:#e9edf6;text-decoration:none}' +
+  '.wordmark b{font-weight:600;color:#8fa6ff}' +
+  '.mark{flex:none;width:1.3em;height:1.3em;margin-right:0.45em}' +
+  '.mark circle{fill:none;stroke:#8fa6ff;stroke-width:3.2}' +
+  '.mark .bolt{fill:currentColor;stroke:none}';
+
+/**
+ * The same lockup the site carries. Drawn as geometry rather than set in
+ * type, which matters more here than on the site: these pages are built
+ * from a string and load no font of their own.
+ */
+const LOCKUP =
+  '<a class="wordmark" href="' + SITE + '">' +
+  '<svg class="mark" viewBox="0 0 32 32" aria-hidden="true">' +
+  '<circle cx="16" cy="16" r="11"/>' +
+  '<path class="bolt" d="M18.6 7.1 10.5 17.5h4.6l-1.7 7.3 8.1-10.3h-4.6z"/>' +
+  '</svg>Prove<b>10</b></a>';
 
 /** A reply in the same clothes as the page, so a link does not land somewhere strange. */
 function page(status, heading, body) {
   const html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
-    '<meta name="color-scheme" content="dark"><title>prove10</title>' +
+    '<meta name="color-scheme" content="dark"><title>Prove10</title>' +
     '<style>' + SHELL_CSS +
     'body{display:grid;place-items:center;text-align:center}' +
-    'main{display:grid;gap:1rem;max-width:34ch}' +
+    'main{display:grid;gap:1rem;max-width:34ch;justify-items:center}' +
     'p{margin:0;color:#7c879c}' +
     '</style></head><body><main>' +
+    // The lockup is the way back, so the bare domain below it goes: one
+    // link home is enough, and this one carries the mark.
+    LOCKUP +
     '<h1>' + escapeHtml(heading) + '</h1>' +
     '<p>' + escapeHtml(body) + '</p>' +
-    '<p><a href="' + SITE + '">prove10.com</a></p>' +
     '</main></body></html>';
   return new Response(html, {
     status,
@@ -231,7 +251,7 @@ function confirmationHtml(link, postal) {
     'font-family:' + MAIL_FONT + ';font-size:13px;line-height:1.6;color:#5b6479;">' +
     'If you did not ask for this, ignore it and nothing happens. ' +
     'We will not write again unless you confirm.<br><br>' +
-    'Sent by prove10 &middot; ' +
+    'Sent by Prove10 &middot; ' +
     '<a href="mailto:hello@prove10.com" style="color:#7c879c;">hello@prove10.com</a><br>' +
     (postal ? escapeHtml(postal) + '<br>' : '') +
     'You asked for: ' + escapeHtml(CONSENT) + ' ' +
@@ -257,7 +277,7 @@ async function sendConfirmation(env, email, token) {
       'If you did not ask for this, ignore it and nothing happens. ' +
       'We will not write again unless you confirm.\n\n' +
       '--\n' +
-      'Sent by prove10 - hello@prove10.com\n' +
+      'Sent by Prove10 - hello@prove10.com\n' +
       (postal ? postal + '\n' : '') +
       'You asked for: ' + CONSENT + '\n' +
       'Every email we send carries a one-click unsubscribe link.\n' +
@@ -273,7 +293,7 @@ async function notifyOwner(env, { email, country, total }) {
   if (!env.NOTIFY_TO) return false;
   return sendMail(env, {
     to: env.NOTIFY_TO,
-    subject: 'New prove10 signup: ' + email,
+    subject: 'New Prove10 signup: ' + email,
     replyTo: email,
     text:
       email + '\n' +
@@ -452,7 +472,7 @@ function askForPassword() {
   return new Response('Authentication required.', {
     status: 401,
     headers: {
-      'WWW-Authenticate': 'Basic realm="prove10", charset="UTF-8"',
+      'WWW-Authenticate': 'Basic realm="Prove10", charset="UTF-8"',
       'Content-Type': 'text/plain; charset=utf-8',
       'Cache-Control': 'no-store',
       'X-Robots-Tag': 'noindex, nofollow',
@@ -494,7 +514,7 @@ async function admin(request, env) {
   const html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
     '<meta name="color-scheme" content="dark"><meta name="robots" content="noindex, nofollow">' +
-    '<title>prove10 list</title><style>' + SHELL_CSS +
+    '<title>Prove10 list</title><style>' + SHELL_CSS +
     'body{padding-block:clamp(1.5rem,5vh,2.75rem)}' +
     'main{max-width:60rem;margin-inline:auto;display:grid;gap:1.5rem}' +
     '.counts{display:flex;flex-wrap:wrap;gap:1.5rem;margin:0;padding:0;list-style:none;' +
@@ -513,6 +533,7 @@ async function admin(request, env) {
     '.tag.ok{color:#8fa6ff}.tag.wait{color:#7c879c}.tag.gone{color:#5b6479}' +
     '.foot{margin:0;font-size:0.8125rem;color:#7c879c}' +
     '</style></head><body><main>' +
+    LOCKUP +
     '<h1>The list</h1>' +
     '<ul class="counts">' +
     '<li><b>' + mailable + '</b>mailable</li>' +
