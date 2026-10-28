@@ -1,14 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Prove10">
   <title>Prove10</title>
-  <!-- 1 and 0 interlocked: the stroke passes in front of the ring and the
-       ring breaks to let it through, so it reads as a seal struck through
-       rather than a circled numeral. Geometry, not type, so it needs no
-       font and holds from a 16px favicon up to an app icon. -->
+  <!-- A bolt inside a seal: the ring is the proof, the bolt is how fast
+       it comes back. Geometry rather than type, so it needs no font and
+       holds from a 16px favicon up to an app icon. -->
   <rect width="64" height="64" rx="14" fill="#070910"/>
-  <g transform="translate(2.3,7.1) scale(1.55)">
-    <circle cx="22" cy="16" r="9.5" fill="none" stroke="#8fa6ff" stroke-width="3"/>
-    <path d="M11 4.8V27.5" fill="none" stroke="#070910" stroke-width="6"/>
-    <path d="M11 4.8V27.5M6.8 8.2 11 4.8" fill="none" stroke="#e9edf6" stroke-width="3"
-          stroke-linecap="round" stroke-linejoin="round"/>
+  <g transform="translate(3.2,3.2) scale(1.8)">
+    <circle cx="16" cy="16" r="11" fill="none" stroke="#8fa6ff" stroke-width="3.2"/>
+    <path d="M18.6 7.1 10.5 17.5h4.6l-1.7 7.3 8.1-10.3h-4.6z" fill="#e9edf6"/>
   </g>
 </svg>

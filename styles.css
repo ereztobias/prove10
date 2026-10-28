@@ -99,29 +99,20 @@ body {
    apart "Prove" and the "10", which are two flex items of their own. */
 .mark {
   flex: none;
-  width: 1.55em;
+  width: 1.3em;
   height: 1.3em;
   margin-right: 0.45em;
 }
 .mark circle {
   fill: none;
   stroke: var(--accent);
-  stroke-width: 3;
+  stroke-width: 3.2;
 }
-.mark path {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-/* The ring breaks where the stroke crosses it. Painted in the page
-   colour rather than cut out of the circle, so one shape stays one
-   shape and the gap tracks the background if it ever changes. */
-.mark .knock {
-  stroke: var(--ground);
-  stroke-width: 6;
-  stroke-linecap: butt;
+/* Filled rather than stroked: at 16px a stroked bolt closes up into a
+   blot, while a solid one keeps its notches. */
+.mark .bolt {
+  fill: currentColor;
+  stroke: none;
 }
 
 .chip {
