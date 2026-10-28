@@ -122,11 +122,18 @@ const LOCKUP =
   '<path class="bolt" d="M18.6 7.1 10.5 17.5h4.6l-1.7 7.3 8.1-10.3h-4.6z"/>' +
   '</svg>Prove<b>10</b></a>';
 
+/* Absolute, because this host is not the one holding the files. Without
+   it a tab opened from an email shows the browser's blank page icon. */
+const ICONS =
+  '<link rel="icon" href="' + SITE + '/logo.svg" type="image/svg+xml">' +
+  '<link rel="icon" href="' + SITE + '/favicon.ico" sizes="48x48">' +
+  '<link rel="apple-touch-icon" href="' + SITE + '/apple-touch-icon.png">';
+
 /** A reply in the same clothes as the page, so a link does not land somewhere strange. */
 function page(status, heading, body) {
   const html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
-    '<meta name="color-scheme" content="dark"><title>Prove10</title>' +
+    '<meta name="color-scheme" content="dark"><title>Prove10</title>' + ICONS +
     '<style>' + SHELL_CSS +
     'body{display:grid;place-items:center;text-align:center}' +
     'main{display:grid;gap:1rem;max-width:34ch;justify-items:center}' +
@@ -514,7 +521,7 @@ async function admin(request, env) {
   const html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
     '<meta name="color-scheme" content="dark"><meta name="robots" content="noindex, nofollow">' +
-    '<title>Prove10 list</title><style>' + SHELL_CSS +
+    '<title>Prove10 list</title>' + ICONS + '<style>' + SHELL_CSS +
     'body{padding-block:clamp(1.5rem,5vh,2.75rem)}' +
     'main{max-width:60rem;margin-inline:auto;display:grid;gap:1.5rem}' +
     '.counts{display:flex;flex-wrap:wrap;gap:1.5rem;margin:0;padding:0;list-style:none;' +
