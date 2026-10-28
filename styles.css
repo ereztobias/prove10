@@ -86,7 +86,6 @@ body {
 .wordmark {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
   font-size: 1.0625rem;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -96,10 +95,13 @@ body {
 /* The mark is sized in em, so it tracks the wordmark rather than needing
    a second decision every time the type changes. Strokes are geometry,
    not type: no font to load and nothing to go wrong at 16px. */
+/* Spacing lives on the mark, not as a flex gap: a gap would also push
+   apart "Prove" and the "10", which are two flex items of their own. */
 .mark {
   flex: none;
   width: 1.55em;
   height: 1.3em;
+  margin-right: 0.45em;
 }
 .mark circle {
   fill: none;
