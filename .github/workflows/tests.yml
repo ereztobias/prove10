@@ -7,6 +7,11 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+  # So a pull request proves itself before it is merged. Worth having now
+  # that work arrives on a branch; when everything went straight to main
+  # this would have run the same commit twice for nothing.
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
@@ -41,7 +46,7 @@ jobs:
       # Fetched rather than vendored, so a new version of the recorder
       # costs this job nothing. version.json names the files to take.
       - name: Fetch the recorder
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && github.event_name != 'pull_request' }}
         run: |
           mkdir -p "$RUNNER_TEMP/testai"
           for f in testai-record.mjs reduce.mjs; do
@@ -50,8 +55,11 @@ jobs:
 
       # Says why rather than failing red when the ingest token has not
       # been added yet: that is setup left undone, not a broken build.
+      # Only what shipped. A pull request run is recorded nowhere: its
+      # commit is a merge GitHub made up for the occasion, and a history
+      # of those says nothing about what prove10 was running.
       - name: Record the run in testai
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && github.event_name != 'pull_request' }}
         env:
           TESTAI_TOKEN: ${{ secrets.TESTAI_TOKEN_PROVE10 }}
         run: |
