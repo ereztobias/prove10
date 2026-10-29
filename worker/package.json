@@ -10,8 +10,8 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "test": "vitest run",
-    "migrate:local": "wrangler d1 execute prove10-signups --local --file=./schema.sql",
-    "migrate:remote": "wrangler d1 execute prove10-signups --remote --file=./schema.sql"
+    "migrate:local": "wrangler d1 migrations apply prove10-signups --local",
+    "migrate:remote": "wrangler d1 migrations apply prove10-signups --remote"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "^1.4.10",

@@ -26,10 +26,24 @@ send, so an old link keeps working.
 
 ## Deploy
 
+A push to `main` that touches `worker/` deploys it:
+`.github/workflows/deploy.yml` runs the suite, applies any pending
+migration to the deployed database, then deploys the Worker. It needs two
+repository secrets, `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`,
+and fails loudly without them rather than going green having shipped
+nothing.
+
+By hand, when that is what you want:
+
 ```sh
 cd worker
+npx wrangler d1 migrations apply prove10-signups --remote
 npx wrangler deploy
 ```
+
+Secrets are not part of a deploy. `IP_SALT`, `ADMIN_PASSWORD`,
+`RESEND_API_KEY` and `MAIL_FROM` live on the Worker and survive it
+untouched.
 
 Already provisioned: database `prove10-signups`
 (`c3ddbd73-6496-4751-8084-6c78d9acd36e`, region WEUR), the
@@ -39,10 +53,58 @@ From scratch it would be:
 
 ```sh
 npx wrangler d1 create prove10-signups   # paste database_id into wrangler.toml
-npx wrangler d1 execute prove10-signups --remote --file=./schema.sql
+npx wrangler d1 migrations apply prove10-signups --remote
 npx wrangler secret put IP_SALT          # any long random string
 npx wrangler deploy
 ```
+
+## Migrations
+
+`migrations/` is the history and the only thing that touches a real
+database. `schema.sql` is the shape that history should arrive at: the
+suite builds from it, and `test/schema.test.js` applies the whole chain to
+an empty database and fails if the two have drifted. Never apply
+`schema.sql` to a database that already exists.
+
+```sh
+npm run migrate:local    # the local copy under .wrangler/
+npm run migrate:remote   # the deployed one
+```
+
+### Baselining the deployed database
+
+**Done once, on 2026-10-29. Kept here as the record of why the ledger has
+rows nothing applied.**
+
+The deployed database was built before `migrations/` existed: an older
+five-column `schema.sql` run by hand, then `0002` and `0003` run by hand
+on top. So it had the final shape but no `d1_migrations` ledger, and the
+first `migrations apply --remote` would have tried `0002` again and failed
+on `duplicate column name: token`.
+
+`0001_init.sql` reconstructs the five-column table it started from, which
+is why that file is the old shape and not the current one. Applying the
+chain to an empty database now reproduces the deployed `signups` DDL
+byte for byte. The ledger was then written to say so:
+
+```sh
+npx wrangler d1 execute prove10-signups --remote --command 'CREATE TABLE IF NOT EXISTS d1_migrations (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL)'
+
+npx wrangler d1 execute prove10-signups --remote --command "insert or ignore into d1_migrations (name) values ('0001_init.sql'), ('0002_tokens.sql'), ('0003_consent.sql')"
+```
+
+Two commands, not one file, and not one command either. `--remote --file`
+goes through D1's import API and answered `Authentication error [code:
+10000]` on an OAuth login that has `d1 (write)`; both statements in a
+single `--command` answered `incomplete input: SQLITE_ERROR`. One
+statement per `--command` works.
+
+The table definition is Wrangler's own, copied from
+`node_modules/wrangler` so the ledger it later reads is the one it would
+have made itself. `insert or ignore` makes it safe to run twice.
+Afterwards `npx wrangler d1 migrations apply prove10-signups --remote`
+reports `No migrations to apply!`, which is what it reported on
+2026-10-29 with the five existing rows still in place.
 
 ## The list page
 
