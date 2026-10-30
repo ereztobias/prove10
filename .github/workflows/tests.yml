@@ -45,12 +45,18 @@ jobs:
 
       # Fetched rather than vendored, so a new version of the recorder
       # costs this job nothing. version.json names the files to take.
+      # Unreachable is a warning for the same reason the recording step
+      # below is: the suite has already run by now.
       - name: Fetch the recorder
         if: ${{ !cancelled() && github.event_name != 'pull_request' }}
         run: |
           mkdir -p "$RUNNER_TEMP/testai"
           for f in testai-record.mjs reduce.mjs; do
-            curl -fsSL --retry 3 -o "$RUNNER_TEMP/testai/$f" "https://testai.prove10.com/bin/$f"
+            if ! curl -fsSL --retry 3 -o "$RUNNER_TEMP/testai/$f" "https://testai.prove10.com/bin/$f"; then
+              echo "::warning::could not fetch $f from testai, so this run was not recorded."
+              rm -f "$RUNNER_TEMP/testai/testai-record.mjs"
+              exit 0
+            fi
           done
 
       # Says why rather than failing red when the ingest token has not
@@ -58,6 +64,13 @@ jobs:
       # Only what shipped. A pull request run is recorded nowhere: its
       # commit is a merge GitHub made up for the occasion, and a history
       # of those says nothing about what prove10 was running.
+      #
+      # A WARNING, NOT A FAILURE. Recording is telemetry: testai being
+      # down, unreachable, or out of D1 writes for the day says nothing
+      # about whether this suite passed. It turned the job red once
+      # already (run 41121938498: a green suite reported as a failed
+      # build), and that is the kind of red that teaches people to
+      # ignore red. The suite result still gates the job, below.
       - name: Record the run in testai
         if: ${{ !cancelled() && github.event_name != 'pull_request' }}
         env:
@@ -67,9 +80,18 @@ jobs:
             echo "::notice::TESTAI_TOKEN_PROVE10 is not set, so this run was not recorded."
             exit 0
           fi
-          test -f "$RUNNER_TEMP/report.json" || { echo "::error::vitest wrote no report"; exit 1; }
-          node "$RUNNER_TEMP/testai/testai-record.mjs" --project prove10 \
-            --from "$RUNNER_TEMP/report.json" --commit "${GITHUB_SHA::7}"
+          if [ ! -f "$RUNNER_TEMP/testai/testai-record.mjs" ]; then
+            echo "::warning::the recorder was not fetched, so this run was not recorded."
+            exit 0
+          fi
+          if [ ! -f "$RUNNER_TEMP/report.json" ]; then
+            echo "::warning::vitest wrote no report, so this run was not recorded."
+            exit 0
+          fi
+          if ! node "$RUNNER_TEMP/testai/testai-record.mjs" --project prove10 \
+            --from "$RUNNER_TEMP/report.json" --commit "${GITHUB_SHA::7}"; then
+            echo "::warning::testai did not accept this run, so it was not recorded."
+          fi
 
       - name: Fail if the suite failed
         if: ${{ steps.suite.outcome == 'failure' }}
