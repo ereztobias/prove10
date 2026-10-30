@@ -6,3 +6,7 @@ Thumbs.db
 # publishes their names on a public repo.
 aipdfsign/
 testai/
+
+# Local agent settings, and the backups a plugin install leaves behind.
+# Machine-specific, and nothing here is part of the site.
+.claude/

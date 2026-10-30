@@ -5,6 +5,44 @@ import worker from '../src/index.js';
 export const call = (path, init = {}, over = {}) =>
   worker.fetch(new Request('https://api.prove10.com' + path, init), { ...env, ...over });
 
+/**
+ * Run a .sql file the way Wrangler does: statement by statement.
+ *
+ * Comments are stripped before the split, not after: these files have a
+ * ";" inside a comment, and splitting first leaves half a sentence where a
+ * statement should be.
+ */
+export async function applySql(sql) {
+  const statements = sql
+    .replace(/--[^\n]*/g, '')
+    .split(';')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  for (const statement of statements) await env.DB.prepare(statement).run();
+}
+
+/**
+ * A table's shape, as two sets that do not depend on the order columns
+ * were added in: what SQLite would have to disagree about for the Worker
+ * to behave differently.
+ */
+export async function shapeOf(table) {
+  const by = (k) => (a, b) => a[k].localeCompare(b[k]);
+  const { results: columns } = await env.DB.prepare(`pragma table_info(${table})`).all();
+  const { results: indexes } = await env.DB
+    .prepare("select name, sql from sqlite_master where type = 'index' and tbl_name = ?1")
+    .bind(table)
+    .all();
+  return {
+    columns: columns
+      .map(({ name, type, notnull, dflt_value, pk }) => ({ name, type, notnull, dflt_value, pk }))
+      .sort(by('name')),
+    indexes: indexes
+      .map(({ name, sql }) => ({ name, sql: sql?.replace(/\s+/g, ' ').trim() ?? null }))
+      .sort(by('name')),
+  };
+}
+
 export async function clearAll() {
   await env.DB.prepare('delete from signups').run();
 }
