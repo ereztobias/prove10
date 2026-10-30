@@ -10,3 +10,10 @@ testai/
 # Local agent settings, and the backups a plugin install leaves behind.
 # Machine-specific, and nothing here is part of the site.
 .claude/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
