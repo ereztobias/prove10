@@ -56,6 +56,24 @@ jobs:
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::CLOUDFLARE_API_TOKEN is not set, so nothing can be deployed."; exit 1; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::CLOUDFLARE_ACCOUNT_ID is not set, so nothing can be deployed."; exit 1; }
+          # A token pasted with a line break inside it goes straight into
+          # an Authorization header, and wrangler fails with
+          # `Headers.set: "..." is an invalid header value`, naming no
+          # secret, after the whole suite has already run. That cost the
+          # first deploy on 2026-10-30. Caught here by name instead.
+          #
+          # The value is not repaired, only rejected: a trimmed copy is a
+          # different string from the one GitHub masks in logs, and the
+          # real fix belongs in the secret, not in every run.
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
+            eval "value=\$$name"
+            case $value in
+              *[[:space:]]*)
+                echo "::error::$name contains whitespace, which cannot go in an HTTP header. Re-set the secret as one unbroken line."
+                exit 1
+                ;;
+            esac
+          done
 
       # The gate. tests.yml runs the same suite and reports it to testai;
       # this run reports nothing and exists only to stop a red commit
