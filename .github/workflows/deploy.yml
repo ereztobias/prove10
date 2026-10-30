@@ -81,5 +81,32 @@ jobs:
       - name: Deploy the Worker
         run: npx wrangler deploy
 
+      # A green `wrangler deploy` means Cloudflare accepted the upload,
+      # not that the Worker works. This asks the real hostname a question
+      # only a running router can answer: GET /subscribe is a 405 with an
+      # Allow header. No database, no mail, no side effect.
+      #
+      # /robots.txt is the obvious probe and the wrong one. It is cached
+      # for a day, so the edge would keep answering it long after the
+      # Worker stopped working. This response is no-store.
+      #
+      # It retries because a deploy takes a moment to reach every colo,
+      # and a smoke test that fires too early fails for the wrong reason.
+      - name: Smoke test the deployed Worker
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            status=$(curl -sS -o /dev/null -D /tmp/smoke-headers -w '%{http_code}' https://api.prove10.com/subscribe || echo 000)
+            allow=$(tr -d '\r' < /tmp/smoke-headers | awk -F': ' 'tolower($1) == "allow" { print $2 }')
+            if [ "$status" = "405" ] && [ "$allow" = "POST, OPTIONS" ]; then
+              echo "api.prove10.com answered $status, Allow: $allow"
+              exit 0
+            fi
+            echo "attempt $attempt: status=$status allow=${allow:-none}, retrying in 5s"
+            sleep 5
+          done
+          echo "::error::api.prove10.com never answered 405 with Allow: POST, OPTIONS. The new version is live and wrong: roll it back with \`npx wrangler rollback\`."
+          exit 1
+
       - name: Say what is live
+        if: ${{ always() }}
         run: npx wrangler deployments list --name prove10-subscribe 2>/dev/null | head -20 || true
