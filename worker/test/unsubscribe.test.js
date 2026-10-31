@@ -64,3 +64,23 @@ describe('one-click', () => {
     expect((await row()).unsubscribed_at).not.toBeNull();
   });
 });
+
+// Value: protects=the date a row records is the first refusal, not the last
+// POST against it; fails_when=the update stops wrapping unsubscribed_at in
+// coalesce; why_new=every other POST test starts from a row that has never
+// unsubscribed, so none of them can see the overwrite; seam=none;
+// no_claim=nothing about how often a provider actually re-posts
+describe('a second POST', () => {
+  it('keeps the date of the first refusal', async () => {
+    const first = '2020-01-02 03:04:05';
+    await seed({ confirmed: 1, unsubscribedAt: first });
+
+    const r = await press(TOKEN_A);
+
+    // Still a plain success: pressing twice is not an error, and the row
+    // was matched either way.
+    expect(r.status).toBe(200);
+    expect(heading(await r.text())).toBe('Removed');
+    expect((await row()).unsubscribed_at).toBe(first);
+  });
+});

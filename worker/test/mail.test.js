@@ -83,3 +83,67 @@ describe('the owner notification', () => {
     expect(JSON.stringify(owner.body)).not.toContain('List-Unsubscribe');
   });
 });
+
+// A 2xx from Resend used to be silent, so "nothing arrived" and "nothing
+// was sent" looked the same in the logs. The id is the only handle that
+// reaches Resend's own delivery and suppression records.
+//
+// Value: protects=an accepted send logs its Resend id and which mail it
+// was, and logs no recipient address; fails_when=the success log is dropped,
+// stops reading id off the response, or starts naming the recipient;
+// why_new=no test reads what a successful send writes to the log;
+// seam=console.log spy; no_claim=nothing about log retention in production
+describe('an accepted send', () => {
+  let logged;
+
+  beforeEach(() => {
+    logged = [];
+    vi.spyOn(console, 'log').mockImplementation((...args) => logged.push(args));
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it('logs the Resend id and the kind of mail, and no address', async () => {
+    await signup('reader@example.com', {
+      over: { ...SENDING, NOTIFY_TO: 'owner@example.com' },
+    });
+
+    const accepted = logged.filter((a) => a[0] === 'resend accepted');
+    expect(accepted).toEqual([
+      ['resend accepted', 'confirmation', 'stub'],
+      ['resend accepted', 'owner-notification', 'stub'],
+    ]);
+    // The id alone is the lookup key; an address in a retained log is not.
+    expect(JSON.stringify(logged)).not.toContain('reader@example.com');
+  });
+
+  // A receipt that is not JSON must not turn a delivered mail into a
+  // failure: the 2xx already said Resend took it.
+  it('still counts as sent when the body is not JSON', async () => {
+    vi.stubGlobal('fetch', async () => new Response('accepted', { status: 200 }));
+
+    const r = await signup('reader@example.com', { over: SENDING });
+
+    expect(r.status).toBe(200);
+    expect(logged).toContainEqual(['resend accepted', 'confirmation', '(no id)']);
+  });
+});
+
+// Value: protects=a refused send never logs "resend accepted" and never costs
+// the signup; fails_when=the success log moves above the r.ok check or a refusal
+// throws out of sendMail; why_new=every other test stubs a 2xx; seam=console
+// spy; no_claim=nothing about the text of the refusal log
+describe('a refused send', () => {
+  it('is not logged as accepted and does not fail the signup', async () => {
+    const logged = [];
+    vi.spyOn(console, 'log').mockImplementation((...args) => logged.push(args));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.stubGlobal('fetch', async () => new Response('{"message":"no"}', { status: 422 }));
+
+    const r = await signup('reader@example.com', { over: SENDING });
+
+    expect(r.status).toBe(200);
+    expect(logged.filter((a) => a[0] === 'resend accepted')).toEqual([]);
+    vi.restoreAllMocks();
+  });
+});
