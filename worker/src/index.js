@@ -232,19 +232,29 @@ function postalLine(env) {
 }
 
 /**
+ * The one way off the list, built in one place. The header and the link
+ * in the mail body have to name the same route: a visible link that went
+ * somewhere else would be a second, unrecorded way to leave.
+ */
+function unsubscribeUrl(token) {
+  return 'https://api.prove10.com/unsubscribe?t=' + token;
+}
+
+/**
  * The two headers a mailbox provider wants on anything it reads as bulk.
  * Both point at the route that already exists, so there is one way to
  * leave the list and one place where leaving is recorded.
  */
 function unsubscribeHeaders(token) {
   return {
-    'List-Unsubscribe': '<https://api.prove10.com/unsubscribe?t=' + token + '>',
+    'List-Unsubscribe': '<' + unsubscribeUrl(token) + '>',
     'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
   };
 }
 
-function confirmationHtml(link, postal) {
+function confirmationHtml(link, postal, unsub) {
   const href = escapeHtml(link);
+  const unsubHref = escapeHtml(unsub);
   return '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<meta name="color-scheme" content="dark light">' +
@@ -299,15 +309,18 @@ function confirmationHtml(link, postal) {
     '<a href="mailto:hello@prove10.com" style="color:#7c879c;">hello@prove10.com</a><br>' +
     (postal ? escapeHtml(postal) + '<br>' : '') +
     'You asked for: ' + escapeHtml(CONSENT) + ' ' +
-    'Every email we send carries a one-click unsubscribe link, and ' +
-    'our <a href="' + SITE + '/privacy/" style="color:#7c879c;">privacy policy</a> ' +
-    'says what we store.</p>' +
+    'Our <a href="' + SITE + '/privacy/" style="color:#7c879c;">privacy policy</a> ' +
+    'says what we store.<br>' +
+    'Changed your mind? ' +
+    '<a href="' + unsubHref + '" style="color:#7c879c;">Leave the list</a> ' +
+    'and we will not write again.</p>' +
 
     '</td></tr></table></td></tr></table></body></html>';
 }
 
 async function sendConfirmation(env, email, token) {
   const link = 'https://api.prove10.com/confirm?t=' + token;
+  const unsub = unsubscribeUrl(token);
   const postal = postalLine(env);
   return sendMail(env, {
     to: email,
@@ -319,7 +332,7 @@ async function sendConfirmation(env, email, token) {
     // one-click needs no second route: a scanner that only follows links
     // still gets the GET form, and nobody is unsubscribed by a GET.
     headers: unsubscribeHeaders(token),
-    html: confirmationHtml(link, postal),
+    html: confirmationHtml(link, postal, unsub),
     text:
       'One tap and you are on the list.\n\n' +
       'Confirm this address and we will send one email when there is ' +
@@ -331,8 +344,8 @@ async function sendConfirmation(env, email, token) {
       'Sent by Prove10 - hello@prove10.com\n' +
       (postal ? postal + '\n' : '') +
       'You asked for: ' + CONSENT + '\n' +
-      'Every email we send carries a one-click unsubscribe link.\n' +
-      'Privacy policy: ' + SITE + '/privacy/',
+      'Privacy policy: ' + SITE + '/privacy/\n' +
+      'Changed your mind? Leave the list:\n' + unsub,
   });
 }
 

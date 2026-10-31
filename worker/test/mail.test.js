@@ -84,6 +84,38 @@ describe('the owner notification', () => {
   });
 });
 
+// The footer used to promise "a one-click unsubscribe link" while the only
+// unsubscribe lived in a header the reader cannot see. Outlook weighs a
+// visible way out, and the claim was false either way.
+//
+// Value: protects=both parts of the confirmation carry a clickable unsubscribe
+// URL, and it is the same route the header names; fails_when=the visible link
+// is dropped from either part, or starts pointing somewhere the header does
+// not; why_new=the header tests read what is posted to Resend, nothing reads
+// the mail body; seam=none; no_claim=nothing about where Outlook files the mail
+describe('the confirmation body', () => {
+  it('shows the same unsubscribe URL the header names, in both parts', async () => {
+    await signup('reader@example.com', { over: SENDING });
+
+    const { token } = await row('reader@example.com');
+    const url = 'https://api.prove10.com/unsubscribe?t=' + token;
+    const { text, html, headers } = sent[0].body;
+
+    expect(headers['List-Unsubscribe']).toBe('<' + url + '>');
+    expect(text).toContain(url);
+    // Clickable, not just mentioned: an href, so a mail client renders it.
+    expect(html).toContain('href="' + url + '"');
+  });
+
+  it('no longer promises a link it does not carry', async () => {
+    await signup('reader@example.com', { over: SENDING });
+    const { text, html } = sent[0].body;
+
+    expect(text).not.toContain('Every email we send carries');
+    expect(html).not.toContain('Every email we send carries');
+  });
+});
+
 // A 2xx from Resend used to be silent, so "nothing arrived" and "nothing
 // was sent" looked the same in the logs. The id is the only handle that
 // reaches Resend's own delivery and suppression records.
