@@ -160,21 +160,20 @@ body {
   align-self: center;
   display: grid;
   gap: clamp(1.4rem, 3vh, 2rem);
-  max-width: 34ch;
-}
-
-/* 34ch is a measure for body copy, and the headline is four times that
-   size, so inside it the sentence broke after every second word. From the
-   width where there is room, the stage opens and it lands in two lines. */
-@media (min-width: 48rem) {
-  .stage { max-width: min(36rem, 100%); }
+  /* 34ch is a measure for body copy, and the headline is four times that
+     size, so inside it the sentence broke after every second word. This
+     grows with the window instead of stepping at one breakpoint: a step
+     would leave every width below it with the old narrow measure and the
+     same broken headline. */
+  max-width: min(36rem, 100%);
 }
 
 h1 {
   margin: 0;
   /* Height counts as much as width on a page that is one screen: a short
-     laptop viewport has to shrink the type rather than start to scroll. */
-  font-size: clamp(2.25rem, min(1rem + 5.4vw, 9vh), 4.5rem);
+     laptop viewport has to shrink the type rather than start to scroll.
+     svh, not vh, so the type measures the same viewport the layout does. */
+  font-size: clamp(2.25rem, min(1rem + 5.4vw, 9svh), 4.5rem);
   font-weight: 300;
   line-height: 1.04;
   letter-spacing: -0.035em;

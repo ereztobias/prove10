@@ -23,6 +23,11 @@ beforeEach(async () => {
 
 afterEach(() => vi.unstubAllGlobals());
 
+// Value: protects=the confirmation mail's List-Unsubscribe names the row's own
+// token, and the Post header asks for One-Click; fails_when=sendConfirmation
+// stops passing the headers, or either value drifts from RFC 8058;
+// why_new=nothing else reads what is posted to Resend; seam=none;
+// no_claim=nothing about where a mailbox provider files the mail
 describe('the confirmation mail', () => {
   it('carries one-click unsubscribe headers pointing at the real route', async () => {
     await signup('reader@example.com', { over: SENDING });
@@ -39,6 +44,12 @@ describe('the confirmation mail', () => {
 
   // The header promises a POST works without a form, which is all RFC 8058
   // sends. If that ever stops being true the promise is a dead link.
+  //
+  // Value: protects=the URL the header names removes the address on a bare
+  // POST; fails_when=the /unsubscribe POST route starts requiring a form body
+  // or stops writing unsubscribed_at; why_new=unsubscribe.test.js covers the
+  // route, not the URL the header hands a provider; seam=none;
+  // no_claim=that any provider actually sends the one-click POST
   it('names a URL that unsubscribes on a bare POST', async () => {
     await signup('reader@example.com', { over: SENDING });
     const url = sent[0].body.headers['List-Unsubscribe'].slice(1, -1);
@@ -56,3 +67,16 @@ async function fetchThroughWorker(url) {
   const { env } = await import('cloudflare:workers');
   return worker.fetch(new Request(url, { method: 'POST' }), env);
 }
+
+// Value: protects=owner notification carries no List-Unsubscribe; fails_when=unsubscribeHeaders moves into sendMail or notifyOwner; why_new=only the confirmation mail's headers are asserted; seam=none; no_claim=says nothing about the notification's body
+describe('the owner notification', () => {
+  it('goes out without the list headers, which are not its to say', async () => {
+    await signup('reader@example.com', {
+      over: { ...SENDING, NOTIFY_TO: 'owner@example.com' },
+    });
+
+    const owner = sent.find((s) => s.body.to[0] === 'owner@example.com');
+    expect(owner).toBeDefined();
+    expect(owner.body).not.toHaveProperty('headers');
+  });
+});
