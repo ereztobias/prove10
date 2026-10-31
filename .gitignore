@@ -17,3 +17,6 @@ testai/
 !.dev.vars.example
 .env*
 !.env.example
+# Stray root config wrangler writes when run from the repo root. The real
+# worker config is worker/wrangler.toml.
+wrangler.jsonc

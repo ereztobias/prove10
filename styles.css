@@ -160,12 +160,24 @@ body {
   align-self: center;
   display: grid;
   gap: clamp(1.4rem, 3vh, 2rem);
-  max-width: 34ch;
+  /* 34ch is a measure for body copy, and the headline is four times that
+     size, so inside it the sentence broke after every second word. The cap
+     applies at every width on purpose: behind a breakpoint it left every
+     narrower window with the old measure and the same broken headline.
+     The prose keeps its own measure -- .capture 30rem, .consent 44ch,
+     .note 42ch -- so only the headline reads this one. */
+  max-width: 36rem;
 }
 
 h1 {
   margin: 0;
-  font-size: clamp(2.25rem, 1rem + 5.4vw, 4.5rem);
+  /* Height counts as much as width on a page that is one screen: a short
+     laptop viewport has to shrink the type rather than start to scroll.
+     svh, not vh, so the type measures the same viewport the layout does.
+     The vh line first because an engine that does not know svh throws out
+     the whole clamp and leaves the headline at its default size. */
+  font-size: clamp(2.25rem, min(1rem + 5.4vw, 9vh), 4.5rem);
+  font-size: clamp(2.25rem, min(1rem + 5.4vw, 9svh), 4.5rem);
   font-weight: 300;
   line-height: 1.04;
   letter-spacing: -0.035em;

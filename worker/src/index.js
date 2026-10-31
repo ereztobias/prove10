@@ -168,13 +168,14 @@ function page(status, heading, body, extra) {
  * One way out for every mail this Worker sends. Returns false rather
  * than throwing: a mail problem must never cost a signup.
  */
-async function sendMail(env, { to, subject, text, html, replyTo }) {
+async function sendMail(env, { to, subject, text, html, replyTo, headers }) {
   if (!env.RESEND_API_KEY || !env.MAIL_FROM) return false;
   const payload = { from: env.MAIL_FROM, to: [to], subject, text };
   // Always send text as well. Some clients prefer it, some people read
   // only it, and a mail with both parts is treated better by filters.
   if (html) payload.html = html;
   if (replyTo) payload.reply_to = replyTo;
+  if (headers) payload.headers = headers;
   try {
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -213,6 +214,18 @@ const MAIL_FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,s
 function postalLine(env) {
   const value = (env.POSTAL_ADDRESS ?? '').trim();
   return value.length ? value : null;
+}
+
+/**
+ * The two headers a mailbox provider wants on anything it reads as bulk.
+ * Both point at the route that already exists, so there is one way to
+ * leave the list and one place where leaving is recorded.
+ */
+function unsubscribeHeaders(token) {
+  return {
+    'List-Unsubscribe': '<https://api.prove10.com/unsubscribe?t=' + token + '>',
+    'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+  };
 }
 
 function confirmationHtml(link, postal) {
@@ -284,6 +297,12 @@ async function sendConfirmation(env, email, token) {
   return sendMail(env, {
     to: email,
     subject: 'Confirm your email',
+    // Outlook and Gmail both read this before they decide where the mail
+    // lands, and the footer promises it in words either way. The POST is
+    // the same one the unsubscribe page's button sends, so RFC 8058
+    // one-click needs no second route: a scanner that only follows links
+    // still gets the GET form, and nobody is unsubscribed by a GET.
+    headers: unsubscribeHeaders(token),
     html: confirmationHtml(link, postal),
     text:
       'One tap and you are on the list.\n\n' +
