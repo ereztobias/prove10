@@ -16,8 +16,10 @@ the page calls it cross-origin, with CORS limited to the two real origins.
 | Route | Does |
 |---|---|
 | `POST /subscribe` | `{ "email": "..." }` → `{ "ok": true }`, stores the row, mails the confirmation link if a provider is configured |
-| `GET /confirm?t=` | sets `confirmed = 1` and `confirmed_at` |
-| `GET /unsubscribe?t=` | sets `unsubscribed_at`, clears `confirmed` |
+| `GET /confirm?t=` | shows a confirm button; changes nothing |
+| `POST /confirm?t=` | sets `confirmed = 1` and `confirmed_at` |
+| `GET /unsubscribe?t=` | shows an unsubscribe button; changes nothing |
+| `POST /unsubscribe?t=` | sets `unsubscribed_at`, clears `confirmed`; also the RFC 8058 one-click target |
 | `GET /admin`, `GET /emails` | the same list, behind HTTP basic auth |
 
 `/confirm` and `/unsubscribe` return a small dark page in the site's own
@@ -209,6 +211,19 @@ Every send must carry the unsubscribe link for that row:
 https://api.prove10.com/unsubscribe?t=<token>
 ```
 
+It must also carry that row's unsubscribe headers, which is what
+`unsubscribeHeaders(token)` builds and `sendMail`'s `headers` option passes
+through to Resend:
+
+```
+List-Unsubscribe: <https://api.prove10.com/unsubscribe?t=<token>>
+List-Unsubscribe-Post: List-Unsubscribe=One-Click
+```
+
+Same URL as the footer link, so the POST a provider sends is the one the
+unsubscribe page's own button sends. The confirmation mail already carries
+both; the owner notification does not, because it is not a list mail.
+
 ## Read the list
 
 The page at `/admin` is the easy way. From a terminal:
@@ -247,6 +262,6 @@ No address is ever logged. Addresses are read on `/admin`.
 **No send machinery beyond the confirmation mail.** There is no campaign
 sender, no template, no scheduling. When the first real email goes out it
 has to pull the mailable set above and include each row's unsubscribe
-link, or the promise on the page is broken.
+link and unsubscribe headers, or the promise on the page is broken.
 - Serves `/admin` only when `ADMIN_PASSWORD` is set, never cached, never
   indexed, no referrer.
