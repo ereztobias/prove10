@@ -19,9 +19,11 @@ export default defineConfig({
     }),
   ],
   test: {
-    // Kept small on purpose: this runs on a laptop that is often doing
-    // something heavier at the same time.
-    maxWorkers: 2,
+    // One worker, so test files run one at a time rather than in parallel.
+    // This laptop is often doing something heavier at the same time, and a
+    // serial run also removes shared-state races between files as a
+    // suspect when a test is flaky.
+    maxWorkers: 1,
     setupFiles: ['./test/setup.js'],
     include: ['test/*.test.js'],
   },
