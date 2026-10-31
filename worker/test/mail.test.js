@@ -78,5 +78,8 @@ describe('the owner notification', () => {
     const owner = sent.find((s) => s.body.to[0] === 'owner@example.com');
     expect(owner).toBeDefined();
     expect(owner.body).not.toHaveProperty('headers');
+    // Named the field, so renaming it would leave the line above green
+    // while the header went out anyway. This one reads the whole payload.
+    expect(JSON.stringify(owner.body)).not.toContain('List-Unsubscribe');
   });
 });
