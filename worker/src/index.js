@@ -168,7 +168,7 @@ function page(status, heading, body, extra) {
  * One way out for every mail this Worker sends. Returns false rather
  * than throwing: a mail problem must never cost a signup.
  */
-async function sendMail(env, { to, subject, text, html, replyTo, headers }) {
+async function sendMail(env, { to, subject, text, html, replyTo, headers, kind = 'mail' }) {
   if (!env.RESEND_API_KEY || !env.MAIL_FROM) return false;
   const payload = { from: env.MAIL_FROM, to: [to], subject, text };
   // Always send text as well. Some clients prefer it, some people read
@@ -191,6 +191,21 @@ async function sendMail(env, { to, subject, text, html, replyTo, headers }) {
       console.error('resend refused', r.status, await r.text());
       return false;
     }
+    // A send that worked used to leave no trace at all, so a message that
+    // never arrived was indistinguishable from one never sent. The id is
+    // what Resend keys its own delivery, bounce and suppression records
+    // by, so this line is the join between these logs and that history.
+    //
+    // No recipient address: no other log line here carries one, and the id
+    // is enough to look the message up. Parsed in its own try so a receipt
+    // that is not JSON cannot turn an accepted send into a failed one.
+    let id = null;
+    try {
+      id = (await r.json())?.id ?? null;
+    } catch {
+      // body was not JSON; the 2xx still means Resend took the message
+    }
+    console.log('resend accepted', kind, id ?? '(no id)');
     return true;
   } catch (err) {
     console.error('mail failed', err);
@@ -296,6 +311,7 @@ async function sendConfirmation(env, email, token) {
   const postal = postalLine(env);
   return sendMail(env, {
     to: email,
+    kind: 'confirmation',
     subject: 'Confirm your email',
     // Outlook and Gmail both read this before they decide where the mail
     // lands, and the footer promises it in words either way. The POST is
@@ -328,6 +344,7 @@ async function notifyOwner(env, { email, country, total }) {
   if (!env.NOTIFY_TO) return false;
   return sendMail(env, {
     to: env.NOTIFY_TO,
+    kind: 'owner-notification',
     subject: 'New Prove10 signup: ' + email,
     replyTo: email,
     text:
@@ -505,9 +522,16 @@ async function unsubscribe(url, env) {
   }
 
   // Keep the row, marked, so a later import cannot quietly re-add them.
+  //
+  // coalesce, so the first refusal is the one on record. A provider that
+  // posts the one-click URL twice, or someone who presses the button
+  // again, used to move the date forward and lose when they actually
+  // left -- the only evidence that the mail they objected to predated it.
   const r = await env.DB
     .prepare(
-      "update signups set unsubscribed_at = datetime('now'), confirmed = 0 where token = ?1"
+      'update signups set ' +
+      "unsubscribed_at = coalesce(unsubscribed_at, datetime('now')), " +
+      'confirmed = 0 where token = ?1'
     )
     .bind(token)
     .run();
