@@ -163,9 +163,18 @@ body {
   max-width: 34ch;
 }
 
+/* 34ch is a measure for body copy, and the headline is four times that
+   size, so inside it the sentence broke after every second word. From the
+   width where there is room, the stage opens and it lands in two lines. */
+@media (min-width: 48rem) {
+  .stage { max-width: min(36rem, 100%); }
+}
+
 h1 {
   margin: 0;
-  font-size: clamp(2.25rem, 1rem + 5.4vw, 4.5rem);
+  /* Height counts as much as width on a page that is one screen: a short
+     laptop viewport has to shrink the type rather than start to scroll. */
+  font-size: clamp(2.25rem, min(1rem + 5.4vw, 9vh), 4.5rem);
   font-weight: 300;
   line-height: 1.04;
   letter-spacing: -0.035em;
