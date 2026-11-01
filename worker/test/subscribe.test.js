@@ -58,9 +58,23 @@ describe('what it stores', () => {
     expect((await row()).email).toBe('reader@example.com');
   });
 
-  it('starts unconfirmed, because nothing may be sent yet', async () => {
+  // Submitting the form is the consent, so the row is mailable at once.
+  // The gate used to live in a mail, and a mail that went to junk meant
+  // the person never joined.
+  it('is confirmed on submit, and records when', async () => {
     await signup('reader@example.com');
-    expect((await row()).confirmed).toBe(0);
+    const r = await row();
+    expect(r.confirmed).toBe(1);
+    expect(r.confirmed_at).not.toBeNull();
+  });
+
+  // confirmed_at is the record of when consent was first given, so a
+  // re-submit must not move it forward.
+  it('keeps the first consent date when the same address comes back', async () => {
+    const first = '2020-01-02 03:04:05';
+    await seed({ confirmed: 1, confirmedAt: first });
+    await signup('reader@example.com');
+    expect((await row()).confirmed_at).toBe(first);
   });
 
   it('mints a token that looks like the ones the links carry', async () => {
@@ -119,10 +133,12 @@ describe('signing up again', () => {
     expect((await row()).unsubscribed_at).toBeNull();
   });
 
-  it('leaves them awaiting confirmation, not confirmed outright', async () => {
+  it('puts them straight back on the list', async () => {
     await seed({ confirmed: 0, unsubscribedAt: '2026-01-01 00:00:00' });
     await signup('reader@example.com');
-    expect((await row()).confirmed).toBe(0);
+    const r = await row();
+    expect(r.confirmed).toBe(1);
+    expect(r.unsubscribed_at).toBeNull();
   });
 });
 

@@ -6,7 +6,7 @@
  *
  * Routes:
  *   POST /subscribe      { email } -> { ok: true }
- *   GET  /confirm?t=     double opt-in link from the confirmation email
+ *   GET  /confirm?t=     kept for links already in inboxes; nothing sends one now
  *   GET  /unsubscribe?t= the one click the page promises
  *   GET  /admin          the list, behind HTTP basic auth
  *
@@ -17,8 +17,12 @@
  *    to rate limit.
  *  - A row is mailable only where confirmed = 1 and unsubscribed_at is
  *    null. Not confirmed_at: that stays as a record of when consent was
- *    first given, and someone who unsubscribes and later re-enters their
- *    address still has to confirm again before anything is sent.
+ *    first given.
+ *  - Submitting the form is the consent, and /subscribe writes
+ *    confirmed = 1 straight away. The page states what is being agreed
+ *    to and the row stores that wording verbatim, so a second click in
+ *    an email added no record of anything. It did add a way to lose the
+ *    signup: a welcome filed as junk used to mean never joining at all.
  *  - Every outbound mail is optional. Without RESEND_API_KEY and
  *    MAIL_FROM the address is stored and nothing is sent.
  *  - /admin exists only while ADMIN_PASSWORD is set. Unset means the
@@ -252,18 +256,17 @@ function unsubscribeHeaders(token) {
   };
 }
 
-function confirmationHtml(link, postal, unsub) {
-  const href = escapeHtml(link);
+function welcomeHtml(postal, unsub) {
   const unsubHref = escapeHtml(unsub);
   return '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<meta name="color-scheme" content="dark light">' +
     '<meta name="supported-color-schemes" content="dark light">' +
-    '<title>Confirm your email</title></head>' +
+    '<title>You are on the list</title></head>' +
     '<body style="margin:0;padding:0;background-color:#06080e;">' +
     // Preview line in the inbox list, hidden in the body itself.
     '<div style="display:none;max-height:0;overflow:hidden;opacity:0;">' +
-    'One tap and you are on the list.</div>' +
+    'You are on the list. Nothing else until there is something to use.</div>' +
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ' +
     'style="background-color:#06080e;"><tr>' +
     '<td align="center" style="padding:44px 16px;">' +
@@ -276,35 +279,21 @@ function confirmationHtml(link, postal, unsub) {
 
     '<h1 style="margin:0 0 14px;font-family:' + MAIL_FONT + ';font-size:26px;' +
     'font-weight:400;line-height:1.25;letter-spacing:-0.02em;color:#e9edf6;">' +
-    'One tap and you are on the list.</h1>' +
+    'You are on the list.</h1>' +
 
     '<p style="margin:0 0 30px;font-family:' + MAIL_FONT + ';font-size:16px;' +
     'line-height:1.6;color:#9aa4b8;">' +
-    'Confirm this address and we will send one email when there is ' +
-    'something to use. Nothing else, ever.</p>' +
-
-    '<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>' +
-    '<td align="center" bgcolor="#e9edf6" style="border-radius:2px;">' +
-    '<a href="' + href + '" style="display:inline-block;padding:15px 30px;' +
-    'font-family:' + MAIL_FONT + ';font-size:16px;font-weight:500;' +
-    'color:#060810;text-decoration:none;border-radius:2px;">' +
-    'Confirm your email</a></td></tr></table>' +
-
-    // The button can be stripped, blocked or rendered unclickable. The
-    // address itself has to be here too, or the mail is a dead end.
-    '<p style="margin:30px 0 0;font-family:' + MAIL_FONT + ';font-size:13px;' +
-    'line-height:1.6;color:#7c879c;">' +
-    'Button not working? Paste this into your browser:<br>' +
-    '<a href="' + href + '" style="color:#8fa6ff;word-break:break-all;">' +
-    href + '</a></p>' +
+    'One email when there is something to use. Nothing else, ever. ' +
+    'Nothing more is needed from you.</p>' +
 
     // Identity and the way out, in the mail itself. Israeli law wants
     // the sender named with contact details; GDPR wants withdrawal to
     // be as easy as consent was.
     '<p style="margin:34px 0 0;padding-top:22px;border-top:1px solid #1d2435;' +
     'font-family:' + MAIL_FONT + ';font-size:13px;line-height:1.6;color:#5b6479;">' +
-    'If you did not ask for this, ignore it and nothing happens. ' +
-    'We will not write again unless you confirm.<br><br>' +
+    'You are on the list because this address was entered at ' +
+    '<a href="' + SITE + '" style="color:#7c879c;">prove10.com</a>. ' +
+    'If that was not you, leave the list below and nothing is ever sent.<br><br>' +
     'Sent by Prove10 &middot; ' +
     '<a href="mailto:hello@prove10.com" style="color:#7c879c;">hello@prove10.com</a><br>' +
     (postal ? escapeHtml(postal) + '<br>' : '') +
@@ -318,28 +307,33 @@ function confirmationHtml(link, postal, unsub) {
     '</td></tr></table></td></tr></table></body></html>';
 }
 
-async function sendConfirmation(env, email, token) {
-  const link = 'https://api.prove10.com/confirm?t=' + token;
+/**
+ * Sent once, when an address joins the list. It asks for nothing: the
+ * address is already on the list by the time this goes out, so a mail
+ * that lands in a junk folder costs the signup nothing. That is the
+ * whole reason the confirmation gate is gone.
+ */
+async function sendWelcome(env, email, token) {
   const unsub = unsubscribeUrl(token);
   const postal = postalLine(env);
   return sendMail(env, {
     to: email,
-    kind: 'confirmation',
-    subject: 'Confirm your email',
+    kind: 'welcome',
+    subject: 'You are on the list',
     // Outlook and Gmail both read this before they decide where the mail
     // lands, and the footer promises it in words either way. The POST is
     // the same one the unsubscribe page's button sends, so RFC 8058
     // one-click needs no second route: a scanner that only follows links
     // still gets the GET form, and nobody is unsubscribed by a GET.
     headers: unsubscribeHeaders(token),
-    html: confirmationHtml(link, postal, unsub),
+    html: welcomeHtml(postal, unsub),
     text:
-      'One tap and you are on the list.\n\n' +
-      'Confirm this address and we will send one email when there is ' +
-      'something to use. Nothing else, ever.\n\n' +
-      'Confirm your email:\n' + link + '\n\n' +
-      'If you did not ask for this, ignore it and nothing happens. ' +
-      'We will not write again unless you confirm.\n\n' +
+      'You are on the list.\n\n' +
+      'One email when there is something to use. Nothing else, ever. ' +
+      'Nothing more is needed from you.\n\n' +
+      'You are on the list because this address was entered at ' +
+      'prove10.com. If that was not you, use the link at the end and ' +
+      'nothing is ever sent.\n\n' +
       '--\n' +
       'Sent by Prove10 - hello@prove10.com\n' +
       (postal ? postal + '\n' : '') +
@@ -401,10 +395,11 @@ async function subscribe(request, env, headers) {
     // Asked before the upsert, because `insert ... on conflict do update`
     // reports changes = 1 either way and cannot tell us which happened.
     const existing = await env.DB
-      .prepare('select email from signups where email = ?1')
+      .prepare('select email, unsubscribed_at from signups where email = ?1')
       .bind(email)
       .first();
     const isNew = !existing;
+    const wasAway = !!existing?.unsubscribed_at;
 
     const recent = await env.DB
       .prepare(
@@ -422,9 +417,14 @@ async function subscribe(request, env, headers) {
     // a second token for an address that already has one.
     await env.DB
       .prepare(
-        'insert into signups (email, ip_hash, country, token, consent, created_at) ' +
-        "values (?1, ?2, ?3, ?4, ?5, datetime('now')) " +
+        'insert into signups ' +
+        '(email, ip_hash, country, token, consent, confirmed, confirmed_at, created_at) ' +
+        "values (?1, ?2, ?3, ?4, ?5, 1, datetime('now'), datetime('now')) " +
         'on conflict(email) do update set unsubscribed_at = null, ' +
+        'confirmed = 1, ' +
+        // coalesce, so this stays the date consent was first given
+        // rather than the date of the latest re-submit.
+        "confirmed_at = coalesce(confirmed_at, datetime('now')), " +
         // Someone re-entering their address is consenting again, under
         // whatever wording is on the page now.
         'consent = excluded.consent'
@@ -437,8 +437,11 @@ async function subscribe(request, env, headers) {
       .bind(email)
       .first();
 
-    if (row?.token && !row.confirmed) {
-      await sendConfirmation(env, email, row.token);
+    // Once per arrival: a new address, or one coming back after leaving.
+    // A plain re-submit of an address already on the list sends nothing,
+    // so the form cannot be used to mail someone repeatedly.
+    if (row?.token && (isNew || wasAway)) {
+      await sendWelcome(env, email, row.token);
     }
 
     // Only a genuinely new row is worth telling the owner about; a
@@ -692,6 +695,10 @@ export default {
       return subscribe(request, env, headers);
     }
 
+    // /confirm is no longer part of signing up, and nothing sends a
+    // link to it. It stays because links from before that change are
+    // sitting in inboxes, and because rows predating it are still
+    // unconfirmed: using one is the only way those become mailable.
     if (url.pathname === '/confirm' || url.pathname === '/unsubscribe') {
       const isConfirm = url.pathname === '/confirm';
       if (request.method === 'GET') return askToAct(url, isConfirm);
