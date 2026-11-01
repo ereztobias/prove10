@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { clearAll, signup, row } from './helpers.js';
+import { clearAll, signup, row, call } from './helpers.js';
 
 // The suite is otherwise off the network because RESEND_API_KEY and
 // MAIL_FROM are unset. Here they are bound for one call and fetch is
@@ -23,12 +23,12 @@ beforeEach(async () => {
 
 afterEach(() => vi.unstubAllGlobals());
 
-// Value: protects=the confirmation mail's List-Unsubscribe names the row's own
+// Value: protects=the welcome mail's List-Unsubscribe names the row's own
 // token, and the Post header asks for One-Click; fails_when=sendConfirmation
 // stops passing the headers, or either value drifts from RFC 8058;
 // why_new=nothing else reads what is posted to Resend; seam=none;
 // no_claim=nothing about where a mailbox provider files the mail
-describe('the confirmation mail', () => {
+describe('the welcome mail', () => {
   it('carries one-click unsubscribe headers pointing at the real route', async () => {
     await signup('reader@example.com', { over: SENDING });
 
@@ -93,7 +93,7 @@ describe('the owner notification', () => {
 // is dropped from either part, or starts pointing somewhere the header does
 // not; why_new=the header tests read what is posted to Resend, nothing reads
 // the mail body; seam=none; no_claim=nothing about where Outlook files the mail
-describe('the confirmation body', () => {
+describe('the welcome body', () => {
   it('shows the same unsubscribe URL the header names, in both parts', async () => {
     await signup('reader@example.com', { over: SENDING });
 
@@ -113,6 +113,45 @@ describe('the confirmation body', () => {
 
     expect(text).not.toContain('Every email we send carries');
     expect(html).not.toContain('Every email we send carries');
+  });
+});
+
+// The welcome asks for nothing, so there is no second click to lose. A
+// confirm link in it would be exactly the dependency this change removed.
+//
+// Value: protects=the mail sent on signup carries no /confirm link and no
+// instruction to act; fails_when=the confirm button or its paste-the-link
+// fallback comes back; why_new=the body tests read the unsubscribe link, not
+// what is absent; seam=none; no_claim=nothing about the /confirm route, which
+// still answers for links already sent
+describe('the welcome mail', () => {
+  it('asks for nothing', async () => {
+    await signup('reader@example.com', { over: SENDING });
+    const { text, html, subject } = sent[0].body;
+
+    expect(subject).toBe('You are on the list');
+    expect(text).not.toContain('/confirm');
+    expect(html).not.toContain('/confirm');
+  });
+});
+
+// Value: protects=one welcome per arrival, so the public form cannot be used
+// to mail an address repeatedly; fails_when=the send stops being gated on
+// isNew or wasAway; why_new=no test submits the same address twice with
+// sending on; seam=none; no_claim=nothing about the rate limit, which counts
+// per IP rather than per address
+describe('a second submit of the same address', () => {
+  it('sends nothing, but a return after unsubscribing does', async () => {
+    await signup('reader@example.com', { over: SENDING });
+    expect(sent).toHaveLength(1);
+
+    await signup('reader@example.com', { over: SENDING });
+    expect(sent).toHaveLength(1);
+
+    await call('/unsubscribe?t=' + (await row('reader@example.com')).token,
+      { method: 'POST' });
+    await signup('reader@example.com', { over: SENDING });
+    expect(sent).toHaveLength(2);
   });
 });
 
@@ -142,7 +181,7 @@ describe('an accepted send', () => {
 
     const accepted = logged.filter((a) => a[0] === 'resend accepted');
     expect(accepted).toEqual([
-      ['resend accepted', 'confirmation', 'stub'],
+      ['resend accepted', 'welcome', 'stub'],
       ['resend accepted', 'owner-notification', 'stub'],
     ]);
     // The id alone is the lookup key; an address in a retained log is not.
@@ -157,7 +196,7 @@ describe('an accepted send', () => {
     const r = await signup('reader@example.com', { over: SENDING });
 
     expect(r.status).toBe(200);
-    expect(logged).toContainEqual(['resend accepted', 'confirmation', '(no id)']);
+    expect(logged).toContainEqual(['resend accepted', 'welcome', '(no id)']);
   });
 });
 
